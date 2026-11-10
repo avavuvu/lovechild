@@ -1,0 +1,10 @@
+{
+    "name": "@heartbreak/webgl",
+    "private": true,
+    "type": "module",
+    "license": "AGPL-3.0-or-later",
+    "exports": "./src/index.ts",
+    "dependencies": {
+        "@heartbreak/core": "workspace:*"
+    }
+}

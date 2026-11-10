@@ -1,0 +1,16 @@
+$lead: s("sine*4/2")
+  .every(8, x => x.dec(0.2).ply(2))
+  .legato(2)
+  .rel(1)
+  .n("<0 0 <3!3 9> <3 8>>/2")
+  .scale("<C:major!7 A:minor>")
+
+$: osc(3)
+  .moveX(saw)
+  .move(camera())
+  .scaleX($lead.hits(0.9).pow(3).range(1,0.2))
+  .diff(
+    osc(3)
+      .move(camera())
+      .preview()
+  )

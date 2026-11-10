@@ -1,0 +1,14 @@
+{
+    "name": "heartbreak",
+    "private": true,
+    "type": "module",
+    "license": "AGPL-3.0-or-later",
+    "workspaces": ["packages/*", "apps/*"],
+    "scripts": {
+        "dev": "bun --filter @heartbreak/editor dev",
+        "check": "tsc -p packages/core && tsc -p packages/webgl && tsc -p packages/strudel && bun --filter @heartbreak/editor check"
+    },
+    "devDependencies": {
+        "typescript": "^6.0.3"
+    }
+}
