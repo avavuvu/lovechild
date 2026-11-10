@@ -1,5 +1,5 @@
-import { camera, generateGraph, gradient, image, isChain, noise, osc, polygon, shape, solid, video, voronoi, type Chain, type MediaInput } from '@heartbreak/core'
-import { createRenderer, type CompiledGraph, type MediaElement } from '@heartbreak/webgl'
+import { camera, generateGraph, gradient, image, isChain, noise, osc, polygon, shape, solid, video, voronoi, type Chain, type MediaInput } from '@lovechild/core'
+import { createRenderer, type CompiledGraph, type MediaElement } from '@lovechild/webgl'
 import * as strudel from '@strudel/core'
 import { Cyclist, Hap, isPattern, reify, setTime, silence, stack, type Pattern } from '@strudel/core'
 import { cleanupDraw } from '@strudel/draw'

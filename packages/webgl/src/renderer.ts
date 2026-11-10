@@ -1,4 +1,4 @@
-import type { BufferInput, Graph, Target } from '@heartbreak/core'
+import type { BufferInput, Graph, Target } from '@lovechild/core'
 import { createFeedbackBuffer, deleteFeedbackBuffer, resizeFeedbackBuffer, type FeedbackBuffer } from './buffer'
 import { createEmptyTexture, createMediaTexture, deleteMediaTexture, getCurrentTexture, updateMediaTexture, type MediaElement, type MediaTexture } from './media'
 import { createProgram, createVertexShader } from './program'

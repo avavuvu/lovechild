@@ -1,4 +1,4 @@
-import { Chain, closeLoop, isChain } from '@heartbreak/core'
+import { Chain, closeLoop, isChain } from '@lovechild/core'
 import { isPattern, Pattern, silence } from '@strudel/core'
 import { registerWidgetType, transpiler, type Widget } from '@strudel/transpiler'
 import { createNames, isName, type Block } from './names'

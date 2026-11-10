@@ -1,7 +1,7 @@
 import { syntaxTree } from '@codemirror/language'
 import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state'
 import { Decoration, EditorView, GutterMarker, gutterLineClass } from '@codemirror/view'
-import { getBlockName, imageFunctionNames, isName } from '@heartbreak/strudel'
+import { getBlockName, imageFunctionNames, isName } from '@lovechild/strudel'
 import type { SyntaxNode } from '@lezer/common'
 
 type BlockKind = 'image' | 'sound'

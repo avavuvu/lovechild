@@ -1,4 +1,4 @@
-import { Chain, isChain, selectChain } from '@heartbreak/core'
+import { Chain, isChain, selectChain } from '@lovechild/core'
 import { pure, stack, type Pattern, type PatternTransform, type SelectionName } from '@strudel/core'
 
 type Transform = (chain: Chain) => Chain

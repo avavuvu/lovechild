@@ -1,4 +1,4 @@
-import { isChain, previous, type Chain } from '@heartbreak/core'
+import { isChain, previous, type Chain } from '@lovechild/core'
 import type { Pattern } from '@strudel/core'
 
 export type Block = Chain | Pattern

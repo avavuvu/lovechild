@@ -1,5 +1,5 @@
-import type { MediaInput } from '@heartbreak/core'
-import type { MediaElement } from '@heartbreak/webgl'
+import type { MediaInput } from '@lovechild/core'
+import type { MediaElement } from '@lovechild/webgl'
 
 const createVideoElement = () => {
     const element = document.createElement('video')

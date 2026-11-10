@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createRuntime, type Runtime } from '@heartbreak/strudel'
+    import { createRuntime, type Runtime } from '@lovechild/strudel'
     import { onMount } from 'svelte'
     import { createEditor, type Editor } from './editor'
     import Toolbar from './Toolbar.svelte'
