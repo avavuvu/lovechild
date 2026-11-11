@@ -1,9 +1,11 @@
 import { isChain, type Chain } from '../chain'
 import { encodeChannels } from '../channels'
-import type { Feedback, Operation } from '../operation'
+import type { Argument, Feedback, Media, Operation, Parameter, Text } from '../operation'
 import { getChildren, hasFreePrevious } from '../tree'
 import type { Graph, MediaInput, Pass, Target, Uniform } from './graph'
-import { generatePass, type Resources } from './pass'
+import { generatePass, type Declared, type Resources } from './pass'
+
+const isComponents = (argument: Argument): argument is ReadonlyArray<Parameter> => Array.isArray(argument)
 
 const findScope = (operation: Operation, target: Operation, scope: Feedback | undefined): Feedback | undefined => {
     if (operation === target) {
@@ -25,12 +27,25 @@ const findScope = (operation: Operation, target: Operation, scope: Feedback | un
 
 export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray<Chain>, blocks: ReadonlyMap<string, Chain>): Graph => {
     const uniforms: Array<Uniform> = []
-    const uniformNames = new Map<Operation, ReadonlyArray<string | Chain>>()
+    const uniformNames = new Map<Operation, ReadonlyArray<Declared>>()
     const buffers = new Map<Feedback, number>()
     const blockLoops = new Map<string, Feedback>()
     const media: Array<MediaInput> = []
     const mediaIndexes = new Map<string, number>()
+    const textKeys = new Map<Text, string>()
     const passes: Array<Pass> = []
+
+    const getTextKey = (operation: Text) => {
+        const existing = textKeys.get(operation)
+
+        if (existing !== undefined) {
+            return existing
+        }
+
+        const key = 'text:' + textKeys.size
+        textKeys.set(operation, key)
+        return key
+    }
 
     const addPass = (root: Operation, owner: Feedback | undefined, target: Target) => {
         passes.push(generatePass(root, owner, target, resources))
@@ -45,7 +60,9 @@ export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray
             }
 
             const encode = step.kind === 'color' && step.name === 'channels' ? encodeChannels : Number
-            const names = step.parameters.map((value) => {
+            const isPaint = step.kind === 'source' && step.name === 'paint'
+
+            const declareComponent = (value: Parameter, index: number) => {
                 if (isChain(value)) {
                     return value
                 }
@@ -55,15 +72,17 @@ export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray
                 }
 
                 const name = `parameter${uniforms.length}`
-                uniforms.push({ name, value, encode })
+                uniforms.push(isPaint ? { name, value, encode, colorChannel: index } : { name, value, encode })
                 return name
-            })
+            }
+
+            const names = step.parameters.map((argument, index) => isComponents(argument) ? argument.map(declareComponent) : declareComponent(argument, index))
 
             uniformNames.set(step, names)
             return names
         },
-        getMedia: (operation) => {
-            const key = operation.name + ':' + operation.source
+        getMedia: (operation: Media | Text) => {
+            const key = operation.kind === 'text' ? getTextKey(operation) : operation.name + ':' + operation.source
             const existing = mediaIndexes.get(key)
 
             if (existing !== undefined) {
@@ -71,7 +90,7 @@ export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray
             }
 
             const index = media.length
-            media.push({ name: operation.name, source: operation.source })
+            media.push(operation.kind === 'text' ? { key, name: 'text', settings: operation.settings } : { key, name: operation.name, source: operation.source })
             mediaIndexes.set(key, index)
             return index
         },

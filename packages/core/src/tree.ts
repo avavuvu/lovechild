@@ -1,7 +1,7 @@
 import { Chain, isChain } from './chain'
-import type { Operation, Parameter } from './operation'
+import type { Argument, Operation } from './operation'
 
-export const getParameterOperations = (parameters: ReadonlyArray<Parameter>) => parameters.filter(isChain).map((chain) => chain.operation)
+export const getParameterOperations = (parameters: ReadonlyArray<Argument>) => parameters.flat().filter(isChain).map((chain) => chain.operation)
 
 export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
     switch (operation.kind) {
@@ -12,6 +12,9 @@ export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
         case 'feedback':
         case 'swizzle': {
             return [operation.input]
+        }
+        case 'text': {
+            return [operation.fill, operation.stroke]
         }
         case 'source': {
             return getParameterOperations(operation.parameters)
@@ -54,6 +57,7 @@ const canShowImage = (operation: Operation, blocks: ReadonlyMap<string, Chain>, 
             return operation.name !== 'empty'
         }
         case 'media':
+        case 'text':
         case 'color': {
             return true
         }

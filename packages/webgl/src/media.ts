@@ -1,4 +1,4 @@
-export type MediaElement = HTMLVideoElement | HTMLImageElement
+export type MediaElement = HTMLVideoElement | HTMLImageElement | HTMLCanvasElement
 
 export interface MediaTexture {
     textures: ReadonlyArray<WebGLTexture>
@@ -9,6 +9,12 @@ export interface MediaTexture {
 }
 
 const frameCounts = new WeakMap<HTMLVideoElement, number>()
+
+const canvasVersions = new WeakMap<HTMLCanvasElement, number>()
+
+export const markCanvasChanged = (canvas: HTMLCanvasElement) => {
+    canvasVersions.set(canvas, (canvasVersions.get(canvas) ?? 0) + 1)
+}
 
 const watchFrames = (element: HTMLVideoElement) => {
     if (frameCounts.has(element) || !('requestVideoFrameCallback' in element)) {
@@ -29,6 +35,10 @@ const isMediaReady = (element: MediaElement) => {
         return element.readyState >= element.HAVE_CURRENT_DATA && element.videoWidth > 0
     }
 
+    if (element instanceof HTMLCanvasElement) {
+        return element.width > 0 && element.height > 0
+    }
+
     return element.complete && element.naturalWidth > 0
 }
 
@@ -37,12 +47,20 @@ const getMediaSize = (element: MediaElement) => {
         return { width: element.videoWidth, height: element.videoHeight }
     }
 
+    if (element instanceof HTMLCanvasElement) {
+        return { width: element.width, height: element.height }
+    }
+
     return { width: element.naturalWidth, height: element.naturalHeight }
 }
 
 const getFrame = (element: MediaElement, media: MediaTexture) => {
     if (element instanceof HTMLImageElement) {
         return 0
+    }
+
+    if (element instanceof HTMLCanvasElement) {
+        return canvasVersions.get(element) ?? 0
     }
 
     watchFrames(element)

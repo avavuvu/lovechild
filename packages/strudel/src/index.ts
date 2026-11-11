@@ -1,4 +1,6 @@
-export { getBlockName, type MiniLocation } from './evaluate'
+export { textStyleNames, type Graph, type Pass, type Uniform } from '@lovechild/core'
+export { getBlockName, previewNames, type MiniLocation } from './evaluate'
+export { expandMiniNotation } from './expand'
 export { isName } from './names'
 export { imageFunctionNames } from './images'
 export { createRuntime, type EvaluationResult, type PreviewElement, type Runtime, type RuntimeOptions } from './runtime'

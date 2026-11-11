@@ -4,15 +4,18 @@ import { javascript, javascriptLanguage } from '@codemirror/lang-javascript'
 import { bracketMatching } from '@codemirror/language'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
 import { crosshairCursor, Decoration, drawSelection, dropCursor, EditorView, highlightSpecialChars, keymap, lineNumbers, rectangularSelection, WidgetType, type DecorationSet } from '@codemirror/view'
-import type { EvaluationResult } from '@lovechild/strudel'
+import { previewNames, type EvaluationResult } from '@lovechild/strudel'
 import { flash, flashField } from '@strudel/codemirror/flash.mjs'
 import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror/highlight.mjs'
+import { sliderPlugin, updateSliderWidgets } from '@strudel/codemirror/slider.mjs'
 import { BlockWidget, setWidget } from '@strudel/codemirror/widget.mjs'
 import type { Hap } from '@strudel/core'
 import type { Widget } from '@strudel/transpiler'
 import { blockMarkers } from './blocks'
 import { bracketColors } from './brackets'
+import { createKeyHandler } from './keys'
 import { theme } from './theme'
+import { tokenColors } from './tokens'
 
 export interface EditorOptions {
     parent: HTMLElement
@@ -54,7 +57,7 @@ class InlineWidget extends WidgetType {
 const setWidgets = StateEffect.define<ReadonlyArray<Widget>>()
 
 const createDecorations = (state: EditorState, widgets: ReadonlyArray<Widget>) => {
-    const decorations = widgets.map((widget) => {
+    const decorations = widgets.filter((widget) => previewNames.includes(widget.type)).map((widget) => {
         const line = state.doc.lineAt(Math.min(widget.to, state.doc.length))
         return Decoration.widget({ widget: new InlineWidget(widget), side: 1, block: true }).range(line.to)
     })
@@ -82,26 +85,6 @@ export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Edi
         onEvaluate(view.state.doc.toString())
     }
 
-    const handleKeydown = (event: KeyboardEvent, view: EditorView) => {
-        if (!event.altKey) {
-            return false
-        }
-
-        if (event.code === 'Enter') {
-            event.preventDefault()
-            evaluate(view)
-            return true
-        }
-
-        if (event.code === 'Period') {
-            event.preventDefault()
-            onStop()
-            return true
-        }
-
-        return false
-    }
-
     const view = new EditorView({
         parent,
         state: EditorState.create({
@@ -116,7 +99,7 @@ export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Edi
                 closeBrackets(),
                 javascript(),
                 javascriptLanguage.data.of({ closeBrackets: { brackets: ['(', '[', '{', "'", '"', '<'] } }),
-                EditorView.domEventHandlers({ keydown: handleKeydown }),
+                EditorView.domEventHandlers({ keydown: createKeyHandler(() => evaluate(view), onStop) }),
                 keymap.of([
                     indentWithTab,
                     ...closeBracketsKeymap,
@@ -126,8 +109,10 @@ export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Edi
                 highlightExtension,
                 flashField,
                 widgetField,
+                sliderPlugin,
                 blockMarkers,
                 bracketColors,
+                tokenColors,
                 bracketMatching(),
                 theme,
             ],
@@ -144,6 +129,7 @@ export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Edi
 
             updateMiniLocations(view, miniLocations)
             view.dispatch({ effects: setWidgets.of(widgets) })
+            updateSliderWidgets(view, widgets)
         },
         highlight: (time, haps) => highlightMiniLocations(view, time, haps),
         destroy: () => view.destroy(),

@@ -21,6 +21,7 @@ export interface CompiledVisual {
     graph: Graph
     sound: Pattern
     cps: number | undefined
+    transpiled: string
     readValues: (time: number) => ReadonlyArray<number>
 }
 
@@ -57,7 +58,7 @@ export const createVisuals = (options: VisualsOptions): Visuals => {
                 setcpm: (cpm: number) => setCps(cpm / 60),
             }
 
-            const { blocks, names } = await evaluateCode(code, scope, inputs)
+            const { blocks, names, transpiled } = await evaluateCode(code, scope, inputs)
             const graph = generateGraph(layerChains(blocks), [], getNamedChains(names))
             const reader = createValueReader(graph.uniforms)
             const sounds = blocks.filter(isPattern)
@@ -66,6 +67,7 @@ export const createVisuals = (options: VisualsOptions): Visuals => {
                 graph,
                 sound: sounds.length > 0 ? stack(...sounds) : silence,
                 cps,
+                transpiled,
                 readValues: (time) => {
                     reader.updateValues(time)
                     return reader.values

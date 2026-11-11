@@ -1,5 +1,6 @@
 import { isChain, type Chain, type Uniform } from '@lovechild/core'
 import { reify, type Hap } from '@strudel/core'
+import { readColor } from './colors'
 import type { Block } from './names'
 
 export interface ValueReader {
@@ -18,11 +19,13 @@ export const createValueReader = (uniforms: ReadonlyArray<Uniform>): ValueReader
     const patterns = uniforms.map((uniform) => reify(uniform.value))
     const values = uniforms.map(() => 0)
 
+    const encodeValue = (uniform: Uniform, value: unknown) => uniform.colorChannel === undefined ? uniform.encode(value) : readColor(value)[uniform.colorChannel] ?? 0
+
     const updateValues = (time: number) => patterns.flatMap((pattern, index) => {
         const found = pattern.queryArc(time, time)
 
         if (found.length > 0) {
-            values[index] = uniforms[index].encode(found[0].value)
+            values[index] = encodeValue(uniforms[index], found[0].value)
         }
 
         return found

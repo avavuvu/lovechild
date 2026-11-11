@@ -1,2 +1,2 @@
 export { createRenderer, type CompiledGraph, type Renderer } from './renderer'
-export type { MediaElement } from './media'
+export { markCanvasChanged, type MediaElement } from './media'

@@ -1,4 +1,4 @@
-import { generateGraph, type Chain, type MediaInput } from '@lovechild/core'
+import { generateGraph, type Graph, type MediaInput } from '@lovechild/core'
 import { createRenderer, type CompiledGraph, type MediaElement } from '@lovechild/webgl'
 import * as strudel from '@strudel/core'
 import { Cyclist, Hap, isPattern, setTime, silence, stack, type Pattern } from '@strudel/core'
@@ -14,7 +14,8 @@ import { evaluateCode, type MiniLocation, type Preview } from './evaluate'
 import { imageFunctions } from './images'
 import type { Block } from './names'
 import './events'
-import { createMediaElement, getMediaKey, releaseMediaElement } from './media'
+import { createMediaElement, releaseMediaElement } from './media'
+import { createTextLayer, type TextLayer } from './text'
 import { createValueReader, getNamedChains, layerChains, type ValueReader } from './visuals'
 
 const sampleHost = 'https://strudel.b-cdn.net'
@@ -24,6 +25,7 @@ interface Visual {
     reader: ValueReader
     previews: ReadonlyArray<HTMLElement>
     media: ReadonlyArray<MediaElement>
+    texts: ReadonlyArray<TextLayer>
 }
 
 export interface PreviewElement {
@@ -35,10 +37,13 @@ export interface EvaluationResult {
     miniLocations: ReadonlyArray<MiniLocation>
     widgets: ReadonlyArray<Widget>
     previews: ReadonlyArray<PreviewElement>
+    transpiled: string
+    graph: Graph | undefined
 }
 
 export interface RuntimeOptions {
     onFrame: (time: number, haps: ReadonlyArray<Hap>) => void
+    scope?: Record<string, unknown>
 }
 
 export interface Runtime {
@@ -76,6 +81,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         ...mini,
         ...tonal,
         ...imageFunctions,
+        ...options.scope,
         setcps: setCps,
         setcpm: (cpm: number) => setCps(cpm / 60),
     }
@@ -100,20 +106,19 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
     }
 
     const getMediaElement = (input: MediaInput) => {
-        const key = getMediaKey(input)
-        const existing = mediaElements.get(key)
+        const existing = mediaElements.get(input.key)
 
         if (existing) {
             return existing
         }
 
         const element = createMediaElement(input)
-        mediaElements.set(key, element)
+        mediaElements.set(input.key, element)
         return element
     }
 
     const releaseUnusedMedia = (used: ReadonlyArray<MediaInput>) => {
-        const usedKeys = new Set(used.map(getMediaKey))
+        const usedKeys = new Set(used.map((input) => input.key))
 
         for (const [key, element] of mediaElements) {
             if (!usedKeys.has(key)) {
@@ -124,21 +129,28 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         }
     }
 
-    const createVisual = (chain: Chain | undefined, previews: ReadonlyArray<Preview>, names: ReadonlyMap<string, Block>): Visual | undefined => {
+    const createGraph = (blocks: ReadonlyArray<Block>, previews: ReadonlyArray<Preview>, names: ReadonlyMap<string, Block>) => {
+        const chain = layerChains(blocks)
+
         if (chain === undefined && previews.length === 0) {
-            releaseUnusedMedia([])
             return undefined
         }
 
-        const graph = generateGraph(chain, previews.map((preview) => preview.chain), getNamedChains(names))
-        const compiled = renderer.compile(graph)
-        releaseUnusedMedia(graph.media)
+        return generateGraph(chain, previews.map((preview) => preview.chain), getNamedChains(names))
+    }
 
+    const createTextLayers = (inputs: ReadonlyArray<MediaInput>) => inputs.flatMap((input) => {
+        const element = getMediaElement(input)
+        return input.name === 'text' && element instanceof HTMLCanvasElement ? [createTextLayer(element, input.settings)] : []
+    })
+
+    const createVisual = (graph: Graph, previews: ReadonlyArray<Preview>): Visual => {
         return {
-            graph: compiled,
+            graph: renderer.compile(graph),
             reader: createValueReader(graph.uniforms),
             previews: previews.map((preview) => getPreviewElement(preview.id)),
             media: graph.media.map(getMediaElement),
+            texts: createTextLayers(graph.media),
         }
     }
 
@@ -154,7 +166,12 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
 
         if (visual) {
             haps.push(...visual.reader.updateValues(time).map(fillWhole))
-            renderer.draw(visual.graph, visual.reader.values, visual.previews, visual.media)
+
+            for (const text of visual.texts) {
+                haps.push(...text.update(time, canvas.width, canvas.height).map(fillWhole))
+            }
+
+            renderer.draw(visual.graph, visual.reader.values, time, visual.previews, visual.media)
         }
 
         options.onFrame(time, haps)
@@ -170,11 +187,12 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
 
             cleanupDraw(true)
 
-            const { blocks, names, previews, miniLocations, widgets } = await evaluateCode(code, scope)
-            const chain = layerChains(blocks)
+            const { blocks, names, previews, miniLocations, widgets, transpiled } = await evaluateCode(code, scope)
+            const graph = createGraph(blocks, previews, names)
             const sounds = blocks.filter(isPattern)
 
-            visual = createVisual(chain, previews, names)
+            visual = graph && createVisual(graph, previews)
+            releaseUnusedMedia(graph?.media ?? [])
             sound = sounds.length > 0 ? stack(...sounds) : silence
             await scheduler.setPattern(sound)
 
@@ -190,6 +208,8 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
                 miniLocations,
                 widgets,
                 previews: previews.map((preview) => ({ id: preview.id, element: getPreviewElement(preview.id) })),
+                transpiled,
+                graph,
             }
         },
         stop: () => {

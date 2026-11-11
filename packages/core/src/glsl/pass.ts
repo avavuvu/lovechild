@@ -1,18 +1,28 @@
 import type { Chain } from '../chain'
-import type { Feedback, Media, Operation, Select, Step } from '../operation'
+import type { Feedback, Media, Operation, Select, Step, Text } from '../operation'
 import { createCache } from './cache'
 import type { Pass, Target } from './graph'
-import { vectorParameters } from './library'
+import { stepShapes, type Shape } from '../steps'
 import { baseCoordinate, createShader } from './shader'
 
 type Scope = Feedback | undefined
 
+export type Component = string | Chain
+
+export type Declared = Component | ReadonlyArray<Component>
+
 export interface Resources {
-    declareUniforms: (step: Step | Select) => ReadonlyArray<string | Chain>
-    getMedia: (operation: Media) => number
+    declareUniforms: (step: Step | Select) => ReadonlyArray<Declared>
+    getMedia: (operation: Media | Text) => number
     getBuffer: (feedback: Feedback) => number
     getBlockLoop: (name: string) => Feedback
 }
+
+const vectorTypes: Record<Shape, string> = { scalar: 'float', xy: 'vec2', rgb: 'vec3', rgba: 'vec4' }
+
+const imageChannels: Record<Shape, string> = { scalar: '', xy: 'rg', rgb: 'rgb', rgba: 'rgba' }
+
+const isComponents = (declared: Declared): declared is ReadonlyArray<Component> => Array.isArray(declared)
 
 const formatSwizzle = (input: string, channels: string) => {
     switch (channels.length) {
@@ -35,22 +45,34 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
     const shader = createShader()
     const cache = createCache()
 
+    const emitComponent = (component: Component, coordinate: string, scope: Scope) => {
+        if (typeof component === 'string') {
+            return shader.useUniform(component)
+        }
+
+        return `${emitOperation(component.operation, coordinate, scope)}.r`
+    }
+
+    const emitArgument = (declared: Declared, shape: Shape, coordinate: string, scope: Scope) => {
+        if (isComponents(declared)) {
+            return `${vectorTypes[shape]}(${declared.map((component) => emitComponent(component, coordinate, scope)).join(', ')})`
+        }
+
+        if (shape === 'scalar') {
+            return emitComponent(declared, coordinate, scope)
+        }
+
+        if (typeof declared === 'string') {
+            const value = shader.useUniform(declared)
+            return shape === 'rgba' ? `vec4(vec3(${value}), 1.0)` : `${vectorTypes[shape]}(${value})`
+        }
+
+        return `${emitOperation(declared.operation, coordinate, scope)}.${imageChannels[shape]}`
+    }
+
     const emitParameters = (step: Step | Select, coordinate: string, scope: Scope) => {
-        return resources.declareUniforms(step).map((entry) => {
-            if (typeof entry === 'string') {
-                return shader.useUniform(entry)
-            }
-
-            const image = emitOperation(entry.operation, coordinate, scope)
-            const channels = step.kind === 'select' ? undefined : vectorParameters[step.name]
-
-            if (channels !== undefined) {
-                return `${image}.${channels}`
-            }
-
-            shader.useHelper('luminance')
-            return `luminance(${image})`
-        })
+        const shapes = step.kind === 'select' ? ['scalar' as const] : stepShapes[step.name]
+        return resources.declareUniforms(step).map((declared, index) => emitArgument(declared, shapes[index] ?? 'scalar', coordinate, scope))
     }
 
     const callFunction = (step: Step, values: ReadonlyArray<string>, coordinate: string, scope: Scope) => {
@@ -131,6 +153,13 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
             }
             case 'media': {
                 return shader.sampleMedia(resources.getMedia(operation), coordinate)
+            }
+            case 'text': {
+                const mask = shader.sampleMedia(resources.getMedia(operation), coordinate)
+                const fill = emitOperation(operation.fill, coordinate, scope)
+                const stroke = emitOperation(operation.stroke, coordinate, scope)
+                shader.useHelper('paintText')
+                return shader.declareVariable('vec4', `paintText(${mask}, ${fill}, ${stroke})`)
             }
             case 'previous': {
                 return emitPrevious(operation.block, coordinate, scope)

@@ -1,4 +1,5 @@
-import type { ColorName, CombineName, CoordinateName, Operation, Parameter, SplitName } from './operation'
+import type { ColorName, CombineName, CoordinateName, Operation, Parameter } from './operation'
+import { createArguments } from './steps'
 
 export class Chain {
     readonly operation: Operation
@@ -11,60 +12,56 @@ export class Chain {
         return this.transformCoordinate('rotate', [turns])
     }
 
-    scale(amount: Parameter = 1.5) {
-        return this.transformCoordinate('scale', [amount])
+    scale(x: Parameter = 1.5, y?: Parameter) {
+        return this.transformCoordinate('scale', [x, y])
     }
 
     scaleX(amount: Parameter = 1.5) {
-        return this.transformCoordinate('scaleX', [amount])
+        return this.scale(amount, 1)
     }
 
     scaleY(amount: Parameter = 1.5) {
-        return this.transformCoordinate('scaleY', [amount])
-    }
-
-    moveX(amount: Parameter = 0.5) {
-        return this.transformCoordinate('moveX', [amount])
-    }
-
-    moveY(amount: Parameter = 0.5) {
-        return this.transformCoordinate('moveY', [amount])
+        return this.scale(1, amount)
     }
 
     move(x: Parameter = 0.5, y?: Parameter) {
-        if (y === undefined && isChain(x)) {
-            return this.transformCoordinate('moveBy', [x])
-        }
+        return this.transformCoordinate('move', [x, y])
+    }
 
-        return this.transformCoordinate('move', [x, y ?? x])
+    moveX(amount: Parameter = 0.5) {
+        return this.move(amount, 0)
+    }
+
+    moveY(amount: Parameter = 0.5) {
+        return this.move(0, amount)
     }
 
     kaleid(sides: Parameter = 4) {
         return this.transformCoordinate('kaleid', [sides])
     }
 
-    pixelate(cells: Parameter = 20) {
-        return this.transformCoordinate('pixelate', [cells])
+    pixelate(x: Parameter = 20, y?: Parameter) {
+        return this.transformCoordinate('pixelate', [x, y])
     }
 
     pixelateX(cells: Parameter = 20) {
-        return this.transformCoordinate('pixelateX', [cells])
+        return this.pixelate(cells, 0)
     }
 
     pixelateY(cells: Parameter = 20) {
-        return this.transformCoordinate('pixelateY', [cells])
+        return this.pixelate(0, cells)
     }
 
-    repeat(times: Parameter = 3) {
-        return this.transformCoordinate('repeat', [times])
+    repeat(x: Parameter = 3, y?: Parameter) {
+        return this.transformCoordinate('repeat', [x, y])
     }
 
     repeatX(times: Parameter = 3) {
-        return this.transformCoordinate('repeatX', [times])
+        return this.repeat(times, 0)
     }
 
     repeatY(times: Parameter = 3) {
-        return this.transformCoordinate('repeatY', [times])
+        return this.repeat(0, times)
     }
 
     invert(amount: Parameter = 1) {
@@ -92,11 +89,15 @@ export class Chain {
     }
 
     shift(red: Parameter = 0.5, green?: Parameter, blue?: Parameter) {
-        if (green === undefined && blue === undefined && isChain(red)) {
-            return this.transformColor('shiftBy', [red])
-        }
+        return this.transformColor('shift', [red, green, blue])
+    }
 
-        return this.transformColor('shift', [red, green ?? 0, blue ?? 0])
+    grey() {
+        return this.transformColor('grey', [])
+    }
+
+    gray() {
+        return this.grey()
     }
 
     posterize(levels: Parameter = 3) {
@@ -123,16 +124,16 @@ export class Chain {
         return this.range(minimum, maximum)
     }
 
-    split(amount: Parameter = 0.02) {
-        return this.splitChannels('split', amount)
+    split(x: Parameter = 0.02, y?: Parameter) {
+        return new Chain({ kind: 'split', name: 'split', input: this.operation, parameters: createArguments('split', [x, y]) })
     }
 
     splitX(amount: Parameter = 0.02) {
-        return this.splitChannels('splitX', amount)
+        return this.split(amount, 0)
     }
 
     splitY(amount: Parameter = 0.02) {
-        return this.splitChannels('splitY', amount)
+        return this.split(0, amount)
     }
 
     add(other: Chain) {
@@ -187,16 +188,12 @@ export class Chain {
         return new Chain({ kind: 'source', name: 'empty', parameters: [] })
     }
 
-    private transformCoordinate(name: CoordinateName, parameters: ReadonlyArray<Parameter>) {
-        return new Chain({ kind: 'coordinate', name, input: this.operation, parameters })
+    private transformCoordinate(name: CoordinateName, values: ReadonlyArray<Parameter | undefined>) {
+        return new Chain({ kind: 'coordinate', name, input: this.operation, parameters: createArguments(name, values) })
     }
 
-    private transformColor(name: ColorName, parameters: ReadonlyArray<Parameter>) {
-        return new Chain({ kind: 'color', name, input: this.operation, parameters })
-    }
-
-    private splitChannels(name: SplitName, amount: Parameter) {
-        return new Chain({ kind: 'split', name, input: this.operation, parameters: [amount] })
+    private transformColor(name: ColorName, values: ReadonlyArray<Parameter | undefined>) {
+        return new Chain({ kind: 'color', name, input: this.operation, parameters: createArguments(name, values) })
     }
 
     private combineWith(name: CombineName, other: Chain, parameters: ReadonlyArray<Parameter>) {

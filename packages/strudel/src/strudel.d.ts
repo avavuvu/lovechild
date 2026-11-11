@@ -78,6 +78,40 @@ declare module '@strudel/core' {
 }
 
 declare module '@strudel/mini' {
+    export interface MiniAtom {
+        type_: 'atom'
+        source_: string
+    }
+
+    export type MiniOperation =
+        | { type_: 'stretch', arguments_: { type: 'fast' | 'slow', amount: MiniNode } }
+        | { type_: 'replicate', arguments_: { amount: number } }
+        | { type_: 'bjorklund', arguments_: { pulse: MiniNode, step: MiniNode, rotation?: MiniNode } }
+        | { type_: 'degradeBy', arguments_: { amount: number | null, seed: number } }
+        | { type_: 'tail', arguments_: { element: MiniNode } }
+        | { type_: 'range', arguments_: { element: MiniNode } }
+
+    export interface MiniElement {
+        type_: 'element'
+        source_: MiniNode
+        options_: { ops: Array<MiniOperation>, weight: number, reps: number }
+    }
+
+    export interface MiniPattern {
+        type_: 'pattern'
+        arguments_: { alignment: string, seed?: number, stepsPerCycle?: MiniNode }
+        source_: Array<MiniNode>
+    }
+
+    export interface MiniStretch {
+        type_: 'stretch'
+        source_: MiniNode
+        arguments_: { amount: MiniNode }
+    }
+
+    export type MiniNode = MiniAtom | MiniElement | MiniPattern | MiniStretch
+
+    export const mini2ast: (code: string) => MiniNode
 }
 
 declare module '@strudel/tonal' {

@@ -1,8 +1,12 @@
 <script lang="ts">
     import { createRuntime, type Runtime } from '@lovechild/strudel'
+    import { slider, sliderWithID } from '@strudel/codemirror/slider.mjs'
     import { onMount } from 'svelte'
     import { createEditor, type Editor } from './editor'
+    import { formatOutput, type Display, type Output } from './output'
+    import Panel from './Panel.svelte'
     import Toolbar from './Toolbar.svelte'
+    import { createViewer, type Viewer } from './viewer'
 
     const exampleFiles = import.meta.glob<string>('./examples/*.js', { query: '?raw', import: 'default', eager: true })
 
@@ -14,9 +18,13 @@
 
     let canvas: HTMLCanvasElement
     let container: HTMLElement
+    let viewerContainer: HTMLElement
     let runtime: Runtime | undefined
     let editor: Editor | undefined
+    let viewer: Viewer | undefined
     let isPanelOpen = $state(true)
+    let output: Output = $state.raw({ code: '', transpiled: '', graph: undefined })
+    let display: Display = $state('code')
 
     const evaluateCode = async (code: string) => {
         if (!runtime || !editor) {
@@ -24,7 +32,9 @@
         }
 
         try {
-            editor.showEvaluation(await runtime.evaluate(code))
+            const result = await runtime.evaluate(code)
+            editor.showEvaluation(result)
+            output = { code, transpiled: result.transpiled, graph: result.graph }
         } catch (error) {
             console.error(error)
         }
@@ -41,6 +51,7 @@
     onMount(() => {
         runtime = createRuntime(canvas, {
             onFrame: (time, haps) => editor?.highlight(time, haps),
+            scope: { slider, sliderWithID },
         })
 
         editor = createEditor({
@@ -49,11 +60,37 @@
             onStop: () => runtime?.stop(),
         })
 
+        viewer = createViewer({
+            parent: viewerContainer,
+            onEvaluate: () => editor?.evaluate(),
+            onStop: () => runtime?.stop(),
+        })
+
         selectExample(defaultExample)
 
         return () => {
+            viewer?.destroy()
             editor?.destroy()
             runtime?.destroy()
+        }
+    })
+
+    $effect(() => {
+        if (display === 'code') {
+            return
+        }
+
+        const shown = display
+        let isCurrent = true
+
+        formatOutput(shown, output).then((code) => {
+            if (isCurrent) {
+                viewer?.show(code)
+            }
+        })
+
+        return () => {
+            isCurrent = false
         }
     })
 </script>
@@ -74,6 +111,7 @@
         onSelect={selectExample}
         bind:isExpanded={isPanelOpen}
     >
+        <Panel bind:display>
         <p>
         lovechild is an open source video synth
         </p>
@@ -84,8 +122,12 @@
         <p>
         made by <a href="https://avavu.au">ava dinh-vu</a>
         </p>
+        </Panel>
     </Toolbar>
-<main bind:this={container} class:narrow={isPanelOpen}></main>
+<main class:narrow={isPanelOpen}>
+    <div bind:this={container} hidden={display !== 'code'}></div>
+    <div bind:this={viewerContainer} hidden={display === 'code'}></div>
+</main>
 
 <style>
     :global(body) {
@@ -122,5 +164,9 @@
 
     main.narrow {
         right: var(--panel-width);
+    }
+
+    main > div {
+        height: 100%;
     }
 </style>

@@ -8,6 +8,7 @@ interface CompiledPass {
     target: Target
     inputs: ReadonlyArray<BufferInput>
     resolutionLocation: WebGLUniformLocation | null
+    timeLocation: WebGLUniformLocation | null
     originLocation: WebGLUniformLocation | null
     bufferResolutionLocation: WebGLUniformLocation | null
     parameterLocations: ReadonlyArray<WebGLUniformLocation | null>
@@ -28,7 +29,7 @@ export interface CompiledGraph {
 
 export interface Renderer {
     compile: (graph: Graph) => CompiledGraph
-    draw: (graph: CompiledGraph, values: ReadonlyArray<number>, previews: ReadonlyArray<HTMLElement>, media: ReadonlyArray<MediaElement>) => void
+    draw: (graph: CompiledGraph, values: ReadonlyArray<number>, time: number, previews: ReadonlyArray<HTMLElement>, media: ReadonlyArray<MediaElement>) => void
     clear: () => void
     release: (element: MediaElement) => void
     destroy: () => void
@@ -136,6 +137,7 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                     target: pass.target,
                     inputs: pass.inputs,
                     resolutionLocation: gl.getUniformLocation(program, 'resolution'),
+                    timeLocation: gl.getUniformLocation(program, 'time'),
                     originLocation: gl.getUniformLocation(program, 'origin'),
                     bufferResolutionLocation: gl.getUniformLocation(program, 'bufferResolution'),
                     parameterLocations: graph.uniforms.map((uniform) => gl.getUniformLocation(program, uniform.name)),
@@ -148,7 +150,7 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                 }
             }),
         }),
-        draw: (graph, values, previews, media) => {
+        draw: (graph, values, time, previews, media) => {
             resizeCanvas()
             addBuffers(graph.bufferCount)
             const readyMedia = media.map(updateMedia)
@@ -173,6 +175,7 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                 gl.uniform2f(pass.resolutionLocation, area.width, area.height)
                 gl.uniform2f(pass.originLocation, area.x, area.y)
                 gl.uniform2f(pass.bufferResolutionLocation, canvas.width, canvas.height)
+                gl.uniform1f(pass.timeLocation, time)
 
                 for (const [index, value] of values.entries()) {
                     gl.uniform1f(pass.parameterLocations[index], value)

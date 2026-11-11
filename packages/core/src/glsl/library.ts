@@ -1,11 +1,11 @@
 import type { OperationName } from '../operation'
-
-export const vectorParameters: Partial<Record<OperationName, string>> = {
-    moveBy: 'rg',
-    shiftBy: 'rgb',
-}
+import { stepKinds, stepShapes, type Shape, type StepKind } from '../steps'
 
 export const library: Record<OperationName, string> = {
+    paint: `
+vec4 paint(vec2 coordinate, float red, float green, float blue, float alpha) {
+    return vec4(red, green, blue, alpha);
+}`,
     osc: `
 vec4 osc(vec2 coordinate, float frequency, float phase) {
     float value = sin((coordinate.x * frequency + phase) * TAU) * 0.5 + 0.5;
@@ -20,14 +20,19 @@ vec4 shape(vec2 coordinate, float sides) {
     return vec4(vec3(1.0 - smoothstep(1.0, 1.01, edge)), 1.0);
 }`,
     noise: `
-vec4 noise(vec2 coordinate, float scale, float phase, float offset) {
+vec4 noise(vec2 coordinate, float scale, float speed) {
+    float value = simplexNoise(vec4((coordinate - 0.5) * scale, 0.5, speed * time));
+    return vec4(vec3(value * 0.5 + 0.5), 1.0);
+}`,
+    simplex: `
+vec4 simplex(vec2 coordinate, float scale, float phase, float offset) {
     const float loopRadius = 0.5;
     vec2 loop = vec2(cos(phase * TAU), sin(phase * TAU)) * loopRadius;
     float value = simplexNoise(vec4((coordinate - 0.5) * scale, loop + vec2(0.0, offset)));
     return vec4(vec3(value * 0.5 + 0.5), 1.0);
 }`,
     voronoi: `
-vec4 voronoi(vec2 coordinate, float scale, float phase, float blending) {
+vec4 voronoi(vec2 coordinate, float scale, float speed, float blending) {
     vec2 scaled = (coordinate - 0.5) * scale;
     vec2 cell = floor(scaled);
     vec2 position = fract(scaled);
@@ -38,7 +43,7 @@ vec4 voronoi(vec2 coordinate, float scale, float phase, float blending) {
             vec2 neighbor = vec2(float(x), float(y));
             vec2 seed = cell + neighbor;
             vec2 point = fract(sin(vec2(dot(seed, vec2(127.1, 311.7)), dot(seed, vec2(269.5, 183.3)))) * 43758.5453);
-            point = 0.5 + 0.5 * sin(TAU * (phase + point));
+            point = 0.5 + 0.5 * sin(TAU * (speed * time + point));
             float separation = length(neighbor + point - position);
             if (separation < closestDistance) {
                 closestDistance = separation;
@@ -58,8 +63,17 @@ vec4 empty(vec2 coordinate) {
     return vec4(0.0);
 }`,
     solid: `
-vec4 solid(vec2 coordinate, float red, float green, float blue) {
-    return vec4(red, green, blue, 1.0);
+vec4 solid(vec2 coordinate, vec4 color) {
+    return color;
+}`,
+    hsv: `
+vec4 hsv(vec2 coordinate, float hue, float saturation, float value, float alpha) {
+    return vec4(hsvToRgb(vec3(hue, saturation, value)), alpha);
+}`,
+    oklch: `
+vec4 oklch(vec2 coordinate, float lightness, float chroma, float hue, float alpha) {
+    float scaled = chroma * 0.4;
+    return vec4(oklabToRgb(vec3(lightness, scaled * cos(hue * TAU), scaled * sin(hue * TAU))), alpha);
 }`,
     rotate: `
 vec2 rotate(vec2 coordinate, float turns) {
@@ -67,44 +81,16 @@ vec2 rotate(vec2 coordinate, float turns) {
     return mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * (coordinate - 0.5) + 0.5;
 }`,
     scale: `
-vec2 scale(vec2 coordinate, float amount) {
+vec2 scale(vec2 coordinate, vec2 amount) {
     return (coordinate - 0.5) / amount + 0.5;
 }`,
-    scaleX: `
-vec2 scaleX(vec2 coordinate, float amount) {
-    return vec2((coordinate.x - 0.5) / amount + 0.5, coordinate.y);
-}`,
-    scaleY: `
-vec2 scaleY(vec2 coordinate, float amount) {
-    return vec2(coordinate.x, (coordinate.y - 0.5) / amount + 0.5);
-}`,
-    moveX: `
-vec2 moveX(vec2 coordinate, float amount) {
-    return vec2(coordinate.x - amount, coordinate.y);
-}`,
-    moveY: `
-vec2 moveY(vec2 coordinate, float amount) {
-    return vec2(coordinate.x, coordinate.y - amount);
-}`,
     move: `
-vec2 move(vec2 coordinate, float x, float y) {
-    return coordinate - vec2(x, y);
-}`,
-    moveBy: `
-vec2 moveBy(vec2 coordinate, vec2 offset) {
+vec2 move(vec2 coordinate, vec2 offset) {
     return coordinate - offset;
 }`,
     split: `
-vec2 split(float amount) {
-    return vec2(amount);
-}`,
-    splitX: `
-vec2 splitX(float amount) {
-    return vec2(amount, 0.0);
-}`,
-    splitY: `
-vec2 splitY(float amount) {
-    return vec2(0.0, amount);
+vec2 split(vec2 amount) {
+    return amount;
 }`,
     kaleid: `
 vec2 kaleid(vec2 coordinate, float sides) {
@@ -114,28 +100,15 @@ vec2 kaleid(vec2 coordinate, float sides) {
     return length(point) * vec2(cos(angle), sin(angle)) + 0.5;
 }`,
     pixelate: `
-vec2 pixelate(vec2 coordinate, float cells) {
-    return floor((coordinate - 0.5) * cells + 0.5) / cells + 0.5;
-}`,
-    pixelateX: `
-vec2 pixelateX(vec2 coordinate, float cells) {
-    return vec2(floor((coordinate.x - 0.5) * cells + 0.5) / cells + 0.5, coordinate.y);
-}`,
-    pixelateY: `
-vec2 pixelateY(vec2 coordinate, float cells) {
-    return vec2(coordinate.x, floor((coordinate.y - 0.5) * cells + 0.5) / cells + 0.5);
+vec2 pixelate(vec2 coordinate, vec2 cells) {
+    vec2 safe = max(cells, 0.0001);
+    vec2 pixelated = floor((coordinate - 0.5) * safe + 0.5) / safe + 0.5;
+    return mix(coordinate, pixelated, step(0.0001, cells));
 }`,
     repeat: `
-vec2 repeat(vec2 coordinate, float times) {
-    return fract((coordinate - 0.5) * times + 0.5);
-}`,
-    repeatX: `
-vec2 repeatX(vec2 coordinate, float times) {
-    return vec2(fract((coordinate.x - 0.5) * times + 0.5), coordinate.y);
-}`,
-    repeatY: `
-vec2 repeatY(vec2 coordinate, float times) {
-    return vec2(coordinate.x, fract((coordinate.y - 0.5) * times + 0.5));
+vec2 repeat(vec2 coordinate, vec2 times) {
+    vec2 repeated = fract((coordinate - 0.5) * times + 0.5);
+    return mix(coordinate, repeated, step(0.0001, times));
 }`,
     invert: `
 vec4 invert(vec4 color, float amount) {
@@ -169,12 +142,12 @@ vec4 colorama(vec4 color, float amount) {
     return vec4(fract(hsvToRgb(hsv)), color.a);
 }`,
     shift: `
-vec4 shift(vec4 color, float red, float green, float blue) {
-    return vec4(color.rgb + fract(vec3(red, green, blue)), color.a);
-}`,
-    shiftBy: `
-vec4 shiftBy(vec4 color, vec3 amount) {
+vec4 shift(vec4 color, vec3 amount) {
     return vec4(color.rgb + fract(amount), color.a);
+}`,
+    grey: `
+vec4 grey(vec4 color) {
+    return vec4(vec3(luminance(color)), color.a);
 }`,
     posterize: `
 vec4 posterize(vec4 color, float levels) {
@@ -242,4 +215,29 @@ vec4 screen(vec4 color, vec4 other) {
 vec4 blend(vec4 color, vec4 other, float amount) {
     return mix(color, other, amount);
 }`,
+}
+
+const inputTypes: Record<StepKind, ReadonlyArray<string>> = {
+    source: ['vec2'],
+    coordinate: ['vec2'],
+    color: ['vec4'],
+    combine: ['vec4', 'vec4'],
+    split: [],
+}
+
+const shapeTypes: Record<Shape, string> = { scalar: 'float', xy: 'vec2', rgb: 'vec3', rgba: 'vec4' }
+
+const readSignature = (name: string, source: string) => {
+    const parameters = new RegExp(`\\b${name}\\(([^)]*)\\)\\s*\\{`).exec(source)?.[1] ?? ''
+    return parameters.split(',').map((parameter) => parameter.trim().split(/\s+/)[0]).filter((type) => type !== '')
+}
+
+for (const [name, source] of Object.entries(library)) {
+    const kind = stepKinds.get(name) ?? 'source'
+    const expected = [...inputTypes[kind], ...stepShapes[name as OperationName].map((shape) => shapeTypes[shape])]
+    const actual = readSignature(name, source)
+
+    if (expected.join(',') !== actual.join(',')) {
+        throw new Error(`${name} shader takes (${actual.join(', ')}) but its parameters need (${expected.join(', ')})`)
+    }
 }

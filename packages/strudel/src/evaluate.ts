@@ -17,9 +17,14 @@ export interface Evaluation {
     previews: ReadonlyArray<Preview>
     miniLocations: ReadonlyArray<MiniLocation>
     widgets: ReadonlyArray<Widget>
+    transpiled: string
 }
 
-registerWidgetType('preview')
+export const previewNames = ['preview', 'peak']
+
+for (const name of previewNames) {
+    registerWidgetType(name)
+}
 
 const isMuted = (label: string) => label.startsWith('_') || label.endsWith('_')
 
@@ -79,7 +84,9 @@ export const evaluateCode = async (code: string, scope: Record<string, unknown>,
         Object.defineProperty(prototype, 'p', { value: registerBlock, configurable: true, writable: true })
     }
 
-    Object.defineProperty(Chain.prototype, 'preview', { value: registerPreview, configurable: true, writable: true })
+    for (const name of previewNames) {
+        Object.defineProperty(Chain.prototype, name, { value: registerPreview, configurable: true, writable: true })
+    }
 
     const values = { ...scope, previous: names.readPrevious }
     const run = new Function('lookup', ...Object.keys(values), 'with (lookup) { return ' + output + ' }')
@@ -94,5 +101,6 @@ export const evaluateCode = async (code: string, scope: Record<string, unknown>,
         previews,
         miniLocations,
         widgets,
+        transpiled: output,
     }
 }

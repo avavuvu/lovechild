@@ -1,12 +1,12 @@
-import type { MediaName, Value } from '../operation'
+import type { MediaName, TextSettings, Value } from '../operation'
 
 export type Frame = 'current' | 'previous'
 
-export interface Uniform { name: string, value: Value, encode: (value: unknown) => number }
+export interface Uniform { name: string, value: Value, encode: (value: unknown) => number, colorChannel?: number }
 
 export interface BufferInput { name: string, buffer: number, frame: Frame }
 
-export interface MediaInput { name: MediaName, source: string }
+export type MediaInput = { key: string } & ({ name: MediaName, source: string } | { name: 'text', settings: TextSettings })
 
 export type Target = { kind: 'screen' } | { kind: 'buffer', index: number } | { kind: 'preview', index: number }
 

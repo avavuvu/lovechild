@@ -15,10 +15,11 @@ const startCamera = async (element: HTMLVideoElement) => {
     await element.play()
 }
 
-export const getMediaKey = (input: MediaInput) => input.name + ':' + input.source
-
 export const createMediaElement = (input: MediaInput): MediaElement => {
     switch (input.name) {
+        case 'text': {
+            return document.createElement('canvas')
+        }
         case 'image': {
             const element = new Image()
             element.crossOrigin = 'anonymous'
@@ -42,6 +43,12 @@ export const createMediaElement = (input: MediaInput): MediaElement => {
 export const releaseMediaElement = (element: MediaElement) => {
     if (element instanceof HTMLImageElement) {
         element.removeAttribute('src')
+        return
+    }
+
+    if (element instanceof HTMLCanvasElement) {
+        element.width = 0
+        element.height = 0
         return
     }
 

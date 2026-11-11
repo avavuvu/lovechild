@@ -16,6 +16,8 @@ const settings = {
     specialVariable: '#eeffff',
     propertyName: '#c792ea',
     string: '#c3e88d',
+    patternString: '#ffcb6b',
+    textFunction: '#f78c6c',
     number: '#c3e88d',
     atom: '#f78c6c',
     bool: '#89ddff',
@@ -80,6 +82,12 @@ const layout = EditorView.theme({
     },
     '.cm-gutterElement.cm-sound-block, .cm-sound-name, .cm-sound-name *': {
         color: settings.soundBlock,
+    },
+    '.cm-pattern-string, .cm-pattern-string *': {
+        color: settings.patternString,
+    },
+    '.cm-text-function, .cm-text-function *': {
+        color: settings.textFunction,
     },
     '&.cm-focused .cm-matchingBracket': {
         backgroundColor: settings.matchingBracket,

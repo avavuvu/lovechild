@@ -1,6 +1,6 @@
 import type { OperationName } from '../operation'
 
-export type Helper = 'sampleTexture' | 'sampleFeedback' | 'luminance' | 'hsv' | 'simplexNoise'
+export type Helper = 'sampleTexture' | 'sampleFeedback' | 'paintText' | 'luminance' | 'hsv' | 'oklab' | 'simplexNoise'
 
 export const helpers: Record<Helper, string> = {
     sampleTexture: `
@@ -16,9 +16,29 @@ vec4 sampleFeedback(sampler2D image, vec2 size, vec2 coordinate) {
     vec2 position = (coordinate - 0.5) * min(size.x, size.y) / size + 0.5;
     return texture(image, fract(position));
 }`,
+    paintText: `
+vec4 paintText(vec4 mask, vec4 fill, vec4 stroke) {
+    float fillAmount = mask.r * fill.a;
+    float strokeAmount = mask.g * stroke.a;
+    float alpha = fillAmount + strokeAmount;
+    return alpha > 0.0 ? vec4((fill.rgb * fillAmount + stroke.rgb * strokeAmount) / alpha, alpha) : vec4(0.0);
+}`,
     luminance: `
 float luminance(vec4 color) {
     return dot(color.rgb, vec3(0.2125, 0.7154, 0.0721));
+}`,
+    oklab: `
+vec3 oklabToRgb(vec3 color) {
+    float l = color.x + 0.3963377774 * color.y + 0.2158037573 * color.z;
+    float m = color.x - 0.1055613458 * color.y - 0.0638541728 * color.z;
+    float s = color.x - 0.0894841775 * color.y - 1.2914855480 * color.z;
+    vec3 cone = vec3(l * l * l, m * m * m, s * s * s);
+    vec3 linear = clamp(vec3(
+        4.0767416621 * cone.x - 3.3077115913 * cone.y + 0.2309699292 * cone.z,
+        -1.2684380046 * cone.x + 2.6097574011 * cone.y - 0.3413193965 * cone.z,
+        -0.0041960863 * cone.x - 0.7034186147 * cone.y + 1.7076147010 * cone.z
+    ), 0.0, 1.0);
+    return mix(12.92 * linear, 1.055 * pow(linear, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, linear));
 }`,
     hsv: `
 vec3 rgbToHsv(vec3 color) {
@@ -115,7 +135,10 @@ float simplexNoise(vec4 v) {
 export const functionHelpers: Partial<Record<OperationName, ReadonlyArray<Helper>>> = {
     noise: ['simplexNoise'],
     saturate: ['luminance'],
+    grey: ['luminance'],
     hue: ['hsv'],
+    hsv: ['hsv'],
+    oklch: ['oklab'],
     colorama: ['hsv'],
     thresh: ['luminance'],
     luma: ['luminance'],
