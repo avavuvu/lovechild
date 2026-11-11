@@ -1,7 +1,7 @@
-import { camera, generateGraph, gradient, image, isChain, noise, osc, polygon, shape, solid, video, voronoi, type Chain, type MediaInput } from '@lovechild/core'
+import { generateGraph, type Chain, type MediaInput } from '@lovechild/core'
 import { createRenderer, type CompiledGraph, type MediaElement } from '@lovechild/webgl'
 import * as strudel from '@strudel/core'
-import { Cyclist, Hap, isPattern, reify, setTime, silence, stack, type Pattern } from '@strudel/core'
+import { Cyclist, Hap, isPattern, setTime, silence, stack, type Pattern } from '@strudel/core'
 import { cleanupDraw } from '@strudel/draw'
 import * as mini from '@strudel/mini'
 import * as tonal from '@strudel/tonal'
@@ -11,17 +11,17 @@ import { aliasBank, getAudioContext, initAudio, registerSynthSounds, samples, we
 import './curves'
 import './selections'
 import { evaluateCode, type MiniLocation, type Preview } from './evaluate'
+import { imageFunctions } from './images'
 import type { Block } from './names'
 import './events'
 import { createMediaElement, getMediaKey, releaseMediaElement } from './media'
+import { createValueReader, getNamedChains, layerChains, type ValueReader } from './visuals'
 
 const sampleHost = 'https://strudel.b-cdn.net'
 
 interface Visual {
     graph: CompiledGraph
-    patterns: ReadonlyArray<Pattern>
-    encoders: ReadonlyArray<(value: unknown) => number>
-    values: Array<number>
+    reader: ValueReader
     previews: ReadonlyArray<HTMLElement>
     media: ReadonlyArray<MediaElement>
 }
@@ -46,23 +46,6 @@ export interface Runtime {
     stop: () => void
     destroy: () => void
 }
-
-const readSource = (source: string | Pattern<string>) => isPattern(source) ? source.queryArc(0, 0)[0]?.value ?? '' : source
-
-const imageFunctions = {
-    osc,
-    shape,
-    polygon,
-    solid,
-    noise,
-    voronoi,
-    gradient,
-    camera,
-    video: (source: string | Pattern<string>) => video(readSource(source)),
-    image: (source: string | Pattern<string>) => image(readSource(source)),
-}
-
-export const imageFunctionNames: ReadonlyArray<string> = [...Object.keys(imageFunctions), 'previous']
 
 const fillWhole = (hap: Hap) => hap.whole === undefined ? new Hap(hap.part, hap.part, hap.value, hap.context) : hap
 
@@ -147,16 +130,13 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
             return undefined
         }
 
-        const namedChains = new Map(Array.from(names).filter((entry): entry is [string, Chain] => isChain(entry[1])))
-        const graph = generateGraph(chain, previews.map((preview) => preview.chain), namedChains)
+        const graph = generateGraph(chain, previews.map((preview) => preview.chain), getNamedChains(names))
         const compiled = renderer.compile(graph)
         releaseUnusedMedia(graph.media)
 
         return {
             graph: compiled,
-            patterns: graph.uniforms.map((uniform) => reify(uniform.value)),
-            encoders: graph.uniforms.map((uniform) => uniform.encode),
-            values: graph.uniforms.map(() => 0),
+            reader: createValueReader(graph.uniforms),
             previews: previews.map((preview) => getPreviewElement(preview.id)),
             media: graph.media.map(getMediaElement),
         }
@@ -173,16 +153,8 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         const haps = sound.queryArc(time, time)
 
         if (visual) {
-            for (const [index, pattern] of visual.patterns.entries()) {
-                const found = pattern.queryArc(time, time)
-                haps.push(...found.map(fillWhole))
-
-                if (found.length > 0) {
-                    visual.values[index] = visual.encoders[index](found[0].value)
-                }
-            }
-
-            renderer.draw(visual.graph, visual.values, visual.previews, visual.media)
+            haps.push(...visual.reader.updateValues(time).map(fillWhole))
+            renderer.draw(visual.graph, visual.reader.values, visual.previews, visual.media)
         }
 
         options.onFrame(time, haps)
@@ -199,8 +171,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
             cleanupDraw(true)
 
             const { blocks, names, previews, miniLocations, widgets } = await evaluateCode(code, scope)
-            const chains = blocks.filter(isChain)
-            const chain = chains.length > 0 ? chains.reduce((layered, next) => layered.screen(next)) : undefined
+            const chain = layerChains(blocks)
             const sounds = blocks.filter(isPattern)
 
             visual = createVisual(chain, previews, names)

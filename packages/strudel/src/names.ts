@@ -5,7 +5,7 @@ export type Block = Chain | Pattern
 
 export const isName = (key: string) => key.length > 1 && key.startsWith('$')
 
-export const createNames = () => {
+export const createNames = (inputs: ReadonlyMap<string, Block>) => {
     const blocks = new Map<string, Block>()
     const blockNames = new WeakMap<object, string>()
     const laterNames = new Map<string, object>()
@@ -35,7 +35,7 @@ export const createNames = () => {
                 return undefined
             }
 
-            return blocks.has(key) ? blocks.get(key) : getLaterName(key)
+            return blocks.get(key) ?? inputs.get(key) ?? getLaterName(key)
         },
     })
 

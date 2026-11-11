@@ -6,10 +6,13 @@ declare module '@strudel/core' {
         valueOf: () => number
     }
 
+    export const Fraction: (value: number) => Fraction
+
     export class TimeSpan {
         readonly begin: Fraction
         readonly end: Fraction
         constructor(begin: Fraction, end: Fraction)
+        intersection(other: TimeSpan): TimeSpan | undefined
     }
 
     export interface State {

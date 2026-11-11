@@ -1,7 +1,8 @@
-import { Chain, closeLoop, isChain } from '@lovechild/core'
+import { Chain, closeLoop, isChain, isEmptyLoop } from '@lovechild/core'
 import { isPattern, Pattern, silence } from '@strudel/core'
 import { registerWidgetType, transpiler, type Widget } from '@strudel/transpiler'
 import { createNames, isName, type Block } from './names'
+import { getNamedChains } from './visuals'
 
 export type MiniLocation = [number, number]
 
@@ -28,16 +29,32 @@ const isBlock = (value: unknown): value is Block => isChain(value) || isPattern(
 
 const closeBlock = (block: Block) => isChain(block) ? closeLoop(block) : block
 
-export const evaluateCode = async (code: string, scope: Record<string, unknown>): Promise<Evaluation> => {
+interface Registered {
+    name: string
+    block: Block
+}
+
+const checkLoops = (registered: ReadonlyArray<Registered>, names: ReadonlyMap<string, Block>) => {
+    const chains = getNamedChains(names)
+    const empty = registered.find(({ name, block }) => isChain(block) && isEmptyLoop(block, chains, isName(name) ? name : undefined))
+
+    if (empty) {
+        throw new Error(`${isName(empty.name) ? empty.name : '$:'} only reads previous frames`)
+    }
+}
+
+export const evaluateCode = async (code: string, scope: Record<string, unknown>, inputs: ReadonlyMap<string, Block> = new Map()): Promise<Evaluation> => {
     const { output, miniLocations, widgets } = transpiler(code, { wrapAsync: true })
-    const names = createNames()
+    const names = createNames(inputs)
     const blocks = new Map<string, Block>()
     const previews: Array<Preview> = []
+    const registered: Array<Registered> = []
     let anonymousCount = 0
 
     const registerBlock = function (this: Block, label: string) {
         const name = getBlockName(label)
         const block = closeBlock(this)
+        registered.push({ name, block })
 
         if (isName(name)) {
             names.defineName(name, block)
@@ -68,8 +85,11 @@ export const evaluateCode = async (code: string, scope: Record<string, unknown>)
     const run = new Function('lookup', ...Object.keys(values), 'with (lookup) { return ' + output + ' }')
     const result: unknown = await run(names.lookup, ...Object.values(values))
 
+    const shown = blocks.size > 0 ? Array.from(blocks.values()) : [result].filter(isBlock).map(closeBlock)
+    checkLoops(blocks.size > 0 ? registered : shown.map((block) => ({ name: '$', block })), names.blocks)
+
     return {
-        blocks: blocks.size > 0 ? Array.from(blocks.values()) : [result].filter(isBlock).map(closeBlock),
+        blocks: shown,
         names: names.blocks,
         previews,
         miniLocations,
