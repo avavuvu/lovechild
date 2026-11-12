@@ -1,18 +1,18 @@
 import { Image, isImage } from './image'
-import type { Parameter, SourceName } from './operation'
+import type { Amount, Paint, Parameter, SourceName } from './operation'
 import { createArguments, definitions, sourceNames } from './steps'
 
 const createSource = (name: SourceName, values: ReadonlyArray<Parameter | undefined>) => new Image({ kind: 'source', name, parameters: createArguments(name, values) })
 
-export const osc = (frequency?: Parameter, phase?: Parameter) => createSource('osc', [frequency, phase])
+export const osc = (frequency?: Amount, phase?: Amount) => createSource('osc', [frequency, phase])
 
-export const shape = (sides?: Parameter) => createSource('shape', [sides])
+export const shape = (sides?: Amount) => createSource('shape', [sides])
 
 export const polygon = shape
 
-export const paint = (color: Parameter) => createSource('paint', [color, color, color, color])
+export const paint = (color: Paint) => createSource('paint', [color, color, color, color])
 
-export const solid = (red?: Parameter, green?: Parameter, blue?: Parameter, alpha?: Parameter) => {
+export const solid = (red?: Paint, green?: Amount, blue?: Amount, alpha?: Amount) => {
     const isSingle = green === undefined && blue === undefined && alpha === undefined
 
     if (isSingle && red !== undefined && !isImage(red)) {
@@ -34,19 +34,25 @@ export const white = () => solid(1, 1, 1)
 
 export const black = () => solid(0, 0, 0)
 
-export const hsv = (hue?: Parameter, saturation?: Parameter, value?: Parameter, alpha?: Parameter) => createSource('hsv', [hue, saturation, value, alpha])
+export const hsv = (hue?: Amount, saturation?: Amount, value?: Amount, alpha?: Amount) => createSource('hsv', [hue, saturation, value, alpha])
 
-export const oklch = (lightness?: Parameter, chroma?: Parameter, hue?: Parameter, alpha?: Parameter) => createSource('oklch', [lightness, chroma, hue, alpha])
+export const oklch = (lightness?: Amount, chroma?: Amount, hue?: Amount, alpha?: Amount) => createSource('oklch', [lightness, chroma, hue, alpha])
 
-export const noise = (scale?: Parameter, speed?: Parameter) => createSource('noise', [scale, speed])
+export const noise = (scale?: Amount, speed?: Amount) => createSource('noise', [scale, speed])
 
-export const simplex = (scale?: Parameter, phase?: Parameter, offset?: Parameter) => createSource('simplex', [scale, phase, offset])
+export const simplex = (scale?: Amount, phase?: Amount, offset?: Amount) => createSource('simplex', [scale, phase, offset])
 
-export const voronoi = (scale?: Parameter, speed?: Parameter, blending?: Parameter) => createSource('voronoi', [scale, speed, blending])
+export const voronoi = (scale?: Amount, speed?: Amount, blending?: Amount) => createSource('voronoi', [scale, speed, blending])
 
 export const gradient = () => createSource('gradient', [])
 
-export const sourceFunctions = { osc, shape, polygon, solid, color, colour, rgb, xyz, white, black, hsv, oklch, noise, simplex, voronoi, gradient }
+export const pixels = (count?: Amount) => createSource('pixels', [count])
+
+export const px = pixels
+
+export const resolution = () => createSource('resolution', [])
+
+export const sourceFunctions = { osc, shape, polygon, solid, color, colour, rgb, xyz, white, black, hsv, oklch, noise, simplex, voronoi, gradient, pixels, px, resolution }
 
 for (const name of sourceNames) {
     if (!definitions[name].isInternal && !(name in sourceFunctions)) {

@@ -1,8 +1,6 @@
 import { Image, isImage } from './image'
 import { paint as createPaint } from './sources'
-import type { Operation, TextSettings, Value } from './operation'
-
-type Paint = Value | Image
+import type { Keyword, Operation, Paint, Scalar, TextSettings, Value } from './operation'
 
 interface TextParts {
     settings: TextSettings
@@ -24,7 +22,7 @@ export class TextImage extends Image {
         this.parts = parts
     }
 
-    font(family: Value) {
+    font(family: Keyword) {
         return this.#change({ settings: { ...this.parts.settings, font: family } })
     }
 
@@ -37,11 +35,11 @@ export class TextImage extends Image {
         return this.#change({ stroke: toOperation(paint), settings: { ...settings, outline: settings.outline ?? defaultOutline } })
     }
 
-    outline(width?: Value) {
+    outline(width?: Scalar) {
         return this.#change({ settings: { ...this.parts.settings, outline: width ?? defaultOutline } })
     }
 
-    wrap(width?: Value) {
+    wrap(width?: Scalar) {
         return this.#change({ settings: { ...this.parts.settings, wrap: width ?? defaultWrap } })
     }
 

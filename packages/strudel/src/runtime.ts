@@ -53,9 +53,13 @@ export interface RuntimeOptions {
 
 export interface Runtime {
     evaluate: (code: string) => Promise<EvaluationResult>
+    unmute: () => Promise<void>
+    mute: () => Promise<void>
     stop: () => void
     destroy: () => void
 }
+
+let audioReady: Promise<void> | undefined
 
 const fillWhole = (hap: Hap) => hap.whole === undefined ? new Hap(hap.part, hap.part, hap.value, hap.context) : hap
 
@@ -100,17 +104,24 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         }
     })
 
+    let isMuted = true
+    let audioOffset = 0
+
+    const getTime = () => isMuted ? performance.now() / 1000 : audioContext.currentTime + audioOffset
+
     const playHap = (...values: Parameters<typeof webaudioOutput>) => {
-        const [hap] = values
-        webaudioOutput(...values).catch((error) => reportError(error, hap.context.locations))
+        const [hap, deadline, duration, cps, time] = values
+
+        if (!isMuted) {
+            webaudioOutput(hap, deadline, duration, cps, time - audioOffset).catch((error) => reportError(error, hap.context.locations))
+        }
     }
 
-    const scheduler = new Cyclist({ getTime: () => audioContext.currentTime, onTrigger: playHap, onError: reportError })
+    const scheduler = new Cyclist({ getTime, onTrigger: playHap, onError: reportError })
     const previewElements = new Map<string, HTMLElement>()
     const mediaElements = new Map<string, MediaElement>()
     let sound: Pattern = silence
     let visual: Visual | undefined
-    let audioReady: Promise<void> | undefined
     let frame = 0
 
     setTime(() => scheduler.now())
@@ -231,10 +242,6 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
 
     return {
         evaluate: async (code) => {
-            await audioContext.resume()
-            audioReady ??= initAudio()
-            await audioReady
-
             cleanupDraw(true)
             reportedErrors.clear()
 
@@ -268,6 +275,17 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
                 transpiled,
                 graph,
             }
+        },
+        unmute: async () => {
+            await audioContext.resume()
+            audioReady ??= initAudio()
+            await audioReady
+            audioOffset = performance.now() / 1000 - audioContext.currentTime
+            isMuted = false
+        },
+        mute: async () => {
+            isMuted = true
+            await audioContext.suspend()
         },
         stop: () => {
             scheduler.stop()

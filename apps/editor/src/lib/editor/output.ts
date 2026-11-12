@@ -1,10 +1,5 @@
 import { expandMiniNotation, type Graph, type Pass, type Uniform } from '@lovechild/strudel'
-
-export const displays = ['code', 'functions', 'javascript', 'shader'] as const
-
-export type Display = typeof displays[number]
-
-export type OutputDisplay = Exclude<Display, 'code'>
+import type { OutputDisplay } from './displays'
 
 export interface Output {
     code: string

@@ -1,14 +1,10 @@
 <script lang="ts">
-    import type { Snippet } from 'svelte'
-    import { displays, type Display } from './output'
+    import { displays, type Display } from './displays'
 
-    let { display = $bindable('code'), children }: {
+    let { display = $bindable('code') }: {
         display?: Display
-        children?: Snippet
     } = $props()
 </script>
-
-{@render children?.()}
 
 <details>
     <summary>advanced settings</summary>
@@ -24,7 +20,7 @@
 
 <style>
     details {
-        margin-top: 16px;
+        margin-block-start: calc(2 * var(--gap));
     }
 
     summary {
@@ -34,9 +30,7 @@
     fieldset {
         display: flex;
         gap: 16px;
-        margin: 8px 0 0;
-        padding: 0;
-        border: none;
+        margin-block-start: var(--gap);
     }
 
     label {

@@ -88,6 +88,22 @@ vec4 gradient(vec2 coordinate) {
     return vec4(coordinate, 0.0, 1.0);
 }`,
     },
+    pixels: {
+        parameters: [{ name: 'count', default: 1 }],
+        shapes: ['scalar'],
+        glsl: `
+vec4 pixels(vec2 coordinate, float count) {
+    return vec4(vec3(count / min(areaSize.x, areaSize.y)), 1.0);
+}`,
+    },
+    resolution: {
+        parameters: [],
+        shapes: [],
+        glsl: `
+vec4 resolution(vec2 coordinate) {
+    return vec4(areaSize, 0.0, 1.0);
+}`,
+    },
     empty: {
         parameters: [],
         isInternal: true,

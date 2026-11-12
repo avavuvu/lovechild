@@ -7,7 +7,7 @@ interface CompiledPass {
     program: WebGLProgram
     target: Target
     inputs: ReadonlyArray<BufferInput>
-    resolutionLocation: WebGLUniformLocation | null
+    areaSizeLocation: WebGLUniformLocation | null
     timeLocation: WebGLUniformLocation | null
     originLocation: WebGLUniformLocation | null
     bufferResolutionLocation: WebGLUniformLocation | null
@@ -61,9 +61,19 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
         return program
     }
 
+    let size = { width: canvas.width, height: canvas.height }
+
+    const observer = new ResizeObserver(([entry]) => {
+        size = {
+            width: Math.round(entry.contentRect.width * window.devicePixelRatio),
+            height: Math.round(entry.contentRect.height * window.devicePixelRatio),
+        }
+    })
+
+    observer.observe(canvas)
+
     const resizeCanvas = () => {
-        const width = Math.round(canvas.clientWidth * window.devicePixelRatio)
-        const height = Math.round(canvas.clientHeight * window.devicePixelRatio)
+        const { width, height } = size
 
         if (canvas.width === width && canvas.height === height) {
             return
@@ -136,7 +146,7 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                     program,
                     target: pass.target,
                     inputs: pass.inputs,
-                    resolutionLocation: gl.getUniformLocation(program, 'resolution'),
+                    areaSizeLocation: gl.getUniformLocation(program, 'areaSize'),
                     timeLocation: gl.getUniformLocation(program, 'time'),
                     originLocation: gl.getUniformLocation(program, 'origin'),
                     bufferResolutionLocation: gl.getUniformLocation(program, 'bufferResolution'),
@@ -172,7 +182,7 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
                 gl.viewport(area.x, area.y, area.width, area.height)
                 gl.useProgram(pass.program)
-                gl.uniform2f(pass.resolutionLocation, area.width, area.height)
+                gl.uniform2f(pass.areaSizeLocation, area.width, area.height)
                 gl.uniform2f(pass.originLocation, area.x, area.y)
                 gl.uniform2f(pass.bufferResolutionLocation, canvas.width, canvas.height)
                 gl.uniform1f(pass.timeLocation, time)
@@ -213,6 +223,8 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
             }
         },
         destroy: () => {
+            observer.disconnect()
+
             for (const program of programs.values()) {
                 gl.deleteProgram(program)
             }

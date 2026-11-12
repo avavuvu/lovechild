@@ -5,11 +5,19 @@ import type { coordinates } from './steps/coordinates'
 import type { sources } from './steps/sources'
 import type { splits } from './steps/splits'
 
-export interface Signal {
+export interface Pattern {
     queryArc: (begin: number, end: number) => ReadonlyArray<{ readonly value: unknown }>
 }
 
-export type Value = number | string | Signal
+export type Value = number | string | Pattern
+
+export type Scalar = number | Pattern
+
+export type Amount = Scalar | Image
+
+export type Paint = number | string | Pattern | Image
+
+export type Keyword = string | Pattern
 
 export type Parameter = Value | Image
 

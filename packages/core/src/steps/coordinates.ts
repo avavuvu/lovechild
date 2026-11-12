@@ -28,6 +28,24 @@ vec2 move(vec2 coordinate, vec2 offset) {
     return coordinate - offset;
 }`,
     },
+    scroll: {
+        parameters: [{ name: 'x', default: 0.1 }, { name: 'y' }],
+        shapes: ['xy'],
+        neutral: [0, 0],
+        glsl: `
+vec2 scroll(vec2 coordinate, vec2 speed) {
+    return coordinate - speed * time;
+}`,
+    },
+    spin: {
+        parameters: [{ name: 'speed', default: 0.1 }],
+        shapes: ['scalar'],
+        glsl: `
+vec2 spin(vec2 coordinate, float speed) {
+    float angle = fract(speed * time) * TAU;
+    return mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * (coordinate - 0.5) + 0.5;
+}`,
+    },
     kaleid: {
         parameters: [{ name: 'sides', default: 4 }],
         shapes: ['scalar'],

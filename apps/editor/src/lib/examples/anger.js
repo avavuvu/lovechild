@@ -29,10 +29,10 @@ $sd: s("<- cp>*4")
   .bank("tr808")
 
 
-_$osc: osc($bass.hits(0.2).pow(9).range(2, 4))
+const wave = osc($bass.hits(0.2).pow(9).range(2, 4))
   .scale($sd.hits(0.2).range(1,0.4))
 
-$: $osc.sub(previous().moveX($osc))
+$: wave.sub(previous().moveX(wave))
   .thresh(0.07)
   .colorama("<0.9 0.2 0.3 0.1>*2").r()
   .rotate($high.hits(0.2).range(0.2,0.4))

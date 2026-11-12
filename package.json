@@ -6,6 +6,7 @@
     "workspaces": ["packages/*", "apps/*"],
     "scripts": {
         "dev": "bun --filter @lovechild/editor dev",
+        "build": "bun --filter @lovechild/editor build",
         "check": "tsc -p packages/core && tsc -p packages/webgl && tsc -p packages/strudel && bun --filter @lovechild/editor check"
     },
     "devDependencies": {

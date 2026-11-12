@@ -1,0 +1,147 @@
+@import "./reset.css";
+
+:root {
+    --font-body: monospace;
+    --font-mono: monospace;
+    --row-height: 28px;
+    --gap: 8px;
+    --panel-width: 400px;
+    --code-font-size: 18px;
+
+    --color-white: white;
+    --color-black: black;
+    --color-blue: #0040c0;
+    --color-red: #d00000;
+    --color-orange: #a05a00;
+
+    --color-primary: var(--color-blue);
+    --color-border: var(--color-black);
+    --color-background: var(--color-white);
+    --color-foreground: var(--color-black);
+    --color-muted: #9995b7;
+    --color-caret: #5c49e9;
+    --color-selection: rgba(92, 73, 233, 0.2);
+    --color-selection-match: rgba(92, 73, 233, 0.1);
+    --color-line-background: rgba(255, 255, 255, 0.6);
+    --line-filter: contrast(0.5) brightness(1.8) saturate(1.5);
+    --color-gutter: #0c006b66;
+    --color-matching-bracket: #0c006b1f;
+    --color-warning: var(--color-orange);
+    --color-error: var(--color-red);
+    --color-warning-line: rgba(255, 170, 0, 0.2);
+    --color-error-line: rgba(208, 0, 0, 0.12);
+
+    --color-image: #00968a;
+    --color-sound: #e0325f;
+    --color-text: #b3694d;
+    --color-neutral: var(--color-syntax-foreground);
+
+    --color-syntax-foreground: var(--color-blue);
+    --color-syntax-keyword: #ff5792;
+    --color-syntax-variable: #0c006b;
+    --color-syntax-definition: #0095a8;
+    --color-syntax-special-variable: #5842ff;
+    --color-syntax-property: #0094f0;
+    --color-syntax-string: #00b368;
+    --color-syntax-pattern-string: #e64100;
+    --color-syntax-number: #5842ff;
+    --color-syntax-atom: #5842ff;
+    --color-syntax-bool: #5842ff;
+    --color-syntax-label: #ff5792;
+    --color-syntax-operator: #ff5792;
+    --color-syntax-punctuation: #7060eb;
+    --color-syntax-comment: var(--color-muted);
+    --color-syntax-type: #b3694d;
+    --color-syntax-class: #b3694d;
+    --color-syntax-meta: #e64100;
+    --color-syntax-invalid: #ff4000;
+    --color-syntax-bracket-0: #0094f0;
+    --color-syntax-bracket-1: #c046c0;
+    --color-syntax-bracket-2: #b8860b;
+
+    --border: 1px solid var(--color-border);
+}
+
+.dark {
+    --color-background: transparent;
+    --color-muted: #7d8799;
+    --color-caret: #ffcc00;
+    --color-selection: rgba(128, 203, 196, 0.5);
+    --color-selection-match: #036dd626;
+    --color-line-background: #22222299;
+    --line-filter: none;
+    --color-gutter: #8a919966;
+    --color-matching-bracket: #ffffff33;
+    --color-warning: #ffaa00;
+    --color-warning-line: rgba(255, 170, 0, 0.2);
+    --color-error-line: rgba(255, 85, 85, 0.3);
+
+    --color-image: #4fd6be;
+    --color-sound: #ff757f;
+    --color-text: #f78c6c;
+    --color-neutral: var(--color-syntax-foreground);
+
+    --color-syntax-foreground: #fff;
+    --color-syntax-keyword: #c792ea;
+    --color-syntax-variable: #c792ea;
+    --color-syntax-definition: #82aaff;
+    --color-syntax-special-variable: #eeffff;
+    --color-syntax-property: #c792ea;
+    --color-syntax-string: #c3e88d;
+    --color-syntax-pattern-string: #ffcb6b;
+    --color-syntax-number: #c3e88d;
+    --color-syntax-atom: #f78c6c;
+    --color-syntax-bool: #89ddff;
+    --color-syntax-label: #89ddff;
+    --color-syntax-operator: #89ddff;
+    --color-syntax-punctuation: #82aaff;
+    --color-syntax-comment: var(--color-muted);
+    --color-syntax-type: #c3e88d;
+    --color-syntax-class: #decb6b;
+    --color-syntax-meta: #ffcb6b;
+    --color-syntax-invalid: #fff;
+    --color-syntax-bracket-0: #179fff;
+    --color-syntax-bracket-1: #da70d6;
+    --color-syntax-bracket-2: #ffd700;
+}
+
+body {
+    overflow: hidden;
+    background: var(--color-black);
+}
+
+canvas.stage {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+.image {
+    --kind-color: var(--color-image);
+}
+
+.text {
+    --kind-color: var(--color-text);
+}
+
+.neutral {
+    --kind-color: var(--color-neutral);
+}
+
+.sound {
+    --kind-color: var(--color-sound);
+}
+
+.flow > * + * {
+    margin-block-start: var(--gap);
+}
+
+.flow > :is(h1, h2, h3, hgroup):not(:first-child) {
+    margin-block-start: calc(2 * var(--gap));
+}
+
+.flow a {
+    text-decoration: underline;
+}

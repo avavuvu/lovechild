@@ -1,4 +1,4 @@
-import type { ColorName, CombineName, CoordinateName, Operation, Parameter } from './operation'
+import type { Amount, ColorName, CombineName, CoordinateName, Keyword, Operation, Parameter } from './operation'
 import { colorNames, combineNames, coordinateNames, createArguments, splitNames } from './steps'
 
 type Values = ReadonlyArray<Parameter | undefined>
@@ -10,87 +10,103 @@ export class Image {
         this.operation = operation
     }
 
-    rotate(turns?: Parameter) {
+    rotate(turns?: Amount) {
         return this.#transformCoordinate('rotate', [turns])
     }
 
-    scale(x?: Parameter, y?: Parameter) {
+    scale(x?: Amount, y?: Amount) {
         return this.#transformCoordinate('scale', [x, y])
     }
 
-    scaleX(amount?: Parameter) {
+    scaleX(amount?: Amount) {
         return this.scale(amount, 1)
     }
 
-    scaleY(amount?: Parameter) {
+    scaleY(amount?: Amount) {
         return this.scale(1, amount)
     }
 
-    move(x?: Parameter, y?: Parameter) {
+    move(x?: Amount, y?: Amount) {
         return this.#transformCoordinate('move', [x, y])
     }
 
-    moveX(amount?: Parameter) {
+    moveX(amount?: Amount) {
         return this.move(amount, 0)
     }
 
-    moveY(amount?: Parameter) {
+    moveY(amount?: Amount) {
         return this.move(0, amount)
     }
 
-    kaleid(sides?: Parameter) {
+    scroll(x?: Amount, y?: Amount) {
+        return this.#transformCoordinate('scroll', [x, y])
+    }
+
+    scrollX(speed?: Amount) {
+        return this.scroll(speed, 0)
+    }
+
+    scrollY(speed?: Amount) {
+        return this.scroll(0, speed)
+    }
+
+    spin(speed?: Amount) {
+        return this.#transformCoordinate('spin', [speed])
+    }
+
+    kaleid(sides?: Amount) {
         return this.#transformCoordinate('kaleid', [sides])
     }
 
-    pixelate(x?: Parameter, y?: Parameter) {
+    pixelate(x?: Amount, y?: Amount) {
         return this.#transformCoordinate('pixelate', [x, y])
     }
 
-    pixelateX(cells?: Parameter) {
+    pixelateX(cells?: Amount) {
         return this.pixelate(cells, 0)
     }
 
-    pixelateY(cells?: Parameter) {
+    pixelateY(cells?: Amount) {
         return this.pixelate(0, cells)
     }
 
-    repeat(x?: Parameter, y?: Parameter) {
+    repeat(x?: Amount, y?: Amount) {
         return this.#transformCoordinate('repeat', [x, y])
     }
 
-    repeatX(times?: Parameter) {
+    repeatX(times?: Amount) {
         return this.repeat(times, 0)
     }
 
-    repeatY(times?: Parameter) {
+    repeatY(times?: Amount) {
         return this.repeat(0, times)
     }
 
-    invert(amount?: Parameter) {
+    invert(amount?: Amount) {
         return this.#transformColor('invert', [amount])
     }
 
-    brightness(amount?: Parameter) {
+    brightness(amount?: Amount) {
         return this.#transformColor('brightness', [amount])
     }
 
-    contrast(amount?: Parameter) {
+    contrast(amount?: Amount) {
         return this.#transformColor('contrast', [amount])
     }
 
-    saturate(amount?: Parameter) {
+    saturate(amount?: Amount) {
         return this.#transformColor('saturate', [amount])
     }
 
-    hue(turns?: Parameter) {
+    hue(turns?: Amount) {
         return this.#transformColor('hue', [turns])
     }
 
-    colorama(amount?: Parameter) {
+    colorama(amount?: Amount) {
         return this.#transformColor('colorama', [amount])
     }
 
-    shift(red?: Parameter, green?: Parameter, blue?: Parameter) {
+    shift(red?: Amount, green?: Amount, blue?: Amount) {
         return this.#transformColor('shift', [red, green, blue])
     }
 
@@ -102,39 +118,39 @@ export class Image {
         return this.grey()
     }
 
-    posterize(levels?: Parameter) {
+    posterize(levels?: Amount) {
         return this.#transformColor('posterize', [levels])
     }
 
-    thresh(threshold?: Parameter) {
+    thresh(threshold?: Amount) {
         return this.#transformColor('thresh', [threshold])
     }
 
-    luma(threshold?: Parameter) {
+    luma(threshold?: Amount) {
         return this.#transformColor('luma', [threshold])
     }
 
-    channels(order?: Parameter) {
+    channels(order?: Keyword) {
         return this.#transformColor('channels', [order])
     }
 
-    range(minimum?: Parameter, maximum?: Parameter) {
+    range(minimum?: Amount, maximum?: Amount) {
         return this.#transformColor('range', [minimum, maximum])
     }
 
-    between(minimum?: Parameter, maximum?: Parameter) {
+    between(minimum?: Amount, maximum?: Amount) {
         return this.range(minimum, maximum)
     }
 
-    split(x?: Parameter, y?: Parameter) {
+    split(x?: Amount, y?: Amount) {
         return new Image({ kind: 'split', name: 'split', input: this.operation, parameters: createArguments('split', [x, y]) })
     }
 
-    splitX(amount?: Parameter) {
+    splitX(amount?: Amount) {
         return this.split(amount, 0)
     }
 
-    splitY(amount?: Parameter) {
+    splitY(amount?: Amount) {
         return this.split(0, amount)
     }
 
@@ -178,12 +194,25 @@ export class Image {
         return this.#combineWith('screen', other, [])
     }
 
-    blend(other: Image, amount?: Parameter) {
+    blend(other: Image, amount?: Amount) {
         return this.#combineWith('blend', other, [amount])
     }
 
-    mix(other: Image, amount?: Parameter) {
+    mix(other: Image, amount?: Amount) {
         return this.blend(other, amount)
+    }
+
+    chromaMove(other: Image, amount?: Amount) {
+        if (!isImage(other)) {
+            throw new Error('chromaMove needs an image')
+        }
+
+        const pixel = new Image({ kind: 'source', name: 'pixels', parameters: createArguments('pixels', [amount]) })
+        const red = new Image({ kind: 'swizzle', input: other.operation, channels: 'r' })
+        const green = new Image({ kind: 'swizzle', input: other.operation, channels: 'g' })
+        const blue = new Image({ kind: 'swizzle', input: other.operation, channels: 'b' })
+
+        return this.move(red.sub(green).mult(pixel), green.sub(blue).mult(pixel))
     }
 
     hush() {

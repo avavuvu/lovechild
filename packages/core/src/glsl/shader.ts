@@ -69,7 +69,7 @@ export const createShader = () => {
                 'const float TAU = 6.283185307179586;',
             ],
             [
-                'uniform vec2 resolution;',
+                'uniform vec2 areaSize;',
                 'uniform vec2 origin;',
                 'uniform float time;',
                 ...(inputs.size > 0 ? ['uniform vec2 bufferResolution;'] : []),
@@ -82,7 +82,7 @@ export const createShader = () => {
             ...Array.from(functions, (name) => [definitions[name].glsl.trim()]),
             [
                 'void main() {',
-                '    vec2 ' + baseCoordinate + ' = (gl_FragCoord.xy - origin - 0.5 * resolution) / min(resolution.x, resolution.y) + 0.5;',
+                '    vec2 ' + baseCoordinate + ' = (gl_FragCoord.xy - origin - 0.5 * areaSize) / min(areaSize.x, areaSize.y) + 0.5;',
                 ...statements.map((statement) => `    ${statement}`),
                 '    fragmentColor = ' + output + ';',
                 '}',
