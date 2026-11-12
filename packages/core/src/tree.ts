@@ -1,7 +1,7 @@
-import { Chain, isChain } from './chain'
+import { Image, isImage } from './image'
 import type { Argument, Operation } from './operation'
 
-export const getParameterOperations = (parameters: ReadonlyArray<Argument>) => parameters.flat().filter(isChain).map((chain) => chain.operation)
+export const getParameterOperations = (parameters: ReadonlyArray<Argument>) => parameters.flat().filter(isImage).map((image) => image.operation)
 
 export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
     switch (operation.kind) {
@@ -45,13 +45,13 @@ export const hasFreePrevious = (operation: Operation): boolean => {
     return getChildren(operation).some(hasFreePrevious)
 }
 
-export const closeLoop = (chain: Chain) => {
-    return hasFreePrevious(chain.operation) ? new Chain({ kind: 'feedback', input: chain.operation }) : chain
+export const closeLoop = (image: Image) => {
+    return hasFreePrevious(image.operation) ? new Image({ kind: 'feedback', input: image.operation }) : image
 }
 
 const usesPrevious = (operation: Operation): boolean => operation.kind === 'previous' || getChildren(operation).some(usesPrevious)
 
-const canShowImage = (operation: Operation, blocks: ReadonlyMap<string, Chain>, visiting: ReadonlySet<string>): boolean => {
+const canShowImage = (operation: Operation, blocks: ReadonlyMap<string, Image>, visiting: ReadonlySet<string>): boolean => {
     switch (operation.kind) {
         case 'source': {
             return operation.name !== 'empty'
@@ -80,6 +80,6 @@ const canShowImage = (operation: Operation, blocks: ReadonlyMap<string, Chain>, 
     }
 }
 
-export const isEmptyLoop = (chain: Chain, blocks: ReadonlyMap<string, Chain>, name?: string) => {
-    return usesPrevious(chain.operation) && !canShowImage(chain.operation, blocks, new Set(name === undefined ? [] : [name]))
+export const isEmptyLoop = (image: Image, blocks: ReadonlyMap<string, Image>, name?: string) => {
+    return usesPrevious(image.operation) && !canShowImage(image.operation, blocks, new Set(name === undefined ? [] : [name]))
 }

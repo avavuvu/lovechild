@@ -1,9 +1,11 @@
 <script lang="ts">
     import type { Snippet } from 'svelte'
+    import type { Notice } from './messages'
 
-    let { examples, selected, onPlay, onStop, onSelect, isExpanded = $bindable(false), children }: {
+    let { examples, selected, notices = [], onPlay, onStop, onSelect, isExpanded = $bindable(false), children }: {
         examples: ReadonlyArray<string>
         selected: string
+        notices?: ReadonlyArray<Notice>
         onPlay: () => void
         onStop: () => void
         onSelect: (name: string) => void
@@ -15,25 +17,36 @@
         onSelect(event.currentTarget.value)
         onPlay()
     }
+
+    let noticesHeight = $state(0)
 </script>
 
-<aside>
-    <details bind:open={isExpanded}>
-        <summary>𐄂 lovechild</summary>
-        <section>
-            {@render children?.()}
-        </section>
-    </details>
-    <nav>
-        <button type="button" onclick={onPlay}>▶</button>
-        <button type="button" onclick={onStop}>■</button>
-        <select value={selected} {onchange}>
-            <option value="" disabled></option>
-            {#each examples as name (name)}
-                <option value={name}>{name}</option>
+<aside style:--notices-height="{noticesHeight}px">
+    <div class="notices" class:open={notices.length > 0} bind:clientHeight={noticesHeight}>
+        <ul>
+            {#each notices as notice, index (index)}
+                <li class={notice.kind}>{notice.text}</li>
             {/each}
-        </select>
-    </nav>
+        </ul>
+    </div>
+    <div class="bar">
+        <details bind:open={isExpanded}>
+            <summary>𐄂 lovechild</summary>
+            <section>
+                {@render children?.()}
+            </section>
+        </details>
+        <nav>
+            <button type="button" onclick={onPlay}>▶</button>
+            <button type="button" onclick={onStop}>■</button>
+            <select value={selected} {onchange}>
+                <option value="" disabled></option>
+                {#each examples as name (name)}
+                    <option value={name}>{name}</option>
+                {/each}
+            </select>
+        </nav>
+    </div>
 </aside>
 
 <style>
@@ -50,6 +63,45 @@
         font-family: monospace;
     }
 
+    .notices {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 300ms ease;
+    }
+
+    .notices.open {
+        grid-template-rows: 1fr;
+        border-bottom: 1px solid black;
+    }
+
+    ul {
+        min-height: 0;
+        max-height: 30dvh;
+        overflow: auto;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    li {
+        padding: 4px 8px;
+        white-space: pre-wrap;
+    }
+
+    li.error {
+        background-color: #d00000;
+        color: white;
+    }
+
+    li.warning {
+        background-color: #a05a00;
+        color: white;
+    }
+
+    .bar {
+        position: relative;
+    }
+
     details {
         height: var(--row-height);
         overflow: hidden;
@@ -57,7 +109,7 @@
     }
 
     details[open] {
-        height: calc(100dvh - 2px);
+        height: calc(100dvh - 2px - var(--notices-height));
     }
 
     summary {
@@ -111,7 +163,8 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-        details {
+        details,
+        .notices {
             transition: none;
         }
     }

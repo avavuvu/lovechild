@@ -21,13 +21,13 @@ const parseColor = (value: string) => {
     return [red / 255, green / 255, blue / 255, alpha]
 }
 
-export const readColor = (value: unknown): ReadonlyArray<number> => {
+export const readColor = (value: unknown): ReadonlyArray<number> | undefined => {
     if (typeof value === 'number') {
         return [value, value, value, 1]
     }
 
-    if (typeof value !== 'string') {
-        return [0, 0, 0, 1]
+    if (typeof value !== 'string' || !CSS.supports('color', value)) {
+        return undefined
     }
 
     const existing = colors.get(value)

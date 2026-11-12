@@ -1,6 +1,6 @@
-import { isChain, type Chain } from '../chain'
-import { encodeChannels } from '../channels'
+import { isImage, type Image } from '../image'
 import type { Argument, Feedback, Media, Operation, Parameter, Text } from '../operation'
+import { definitions } from '../steps'
 import { getChildren, hasFreePrevious } from '../tree'
 import type { Graph, MediaInput, Pass, Target, Uniform } from './graph'
 import { generatePass, type Declared, type Resources } from './pass'
@@ -25,7 +25,7 @@ const findScope = (operation: Operation, target: Operation, scope: Feedback | un
     return undefined
 }
 
-export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray<Chain>, blocks: ReadonlyMap<string, Chain>): Graph => {
+export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray<Image>, blocks: ReadonlyMap<string, Image>): Graph => {
     const uniforms: Array<Uniform> = []
     const uniformNames = new Map<Operation, ReadonlyArray<Declared>>()
     const buffers = new Map<Feedback, number>()
@@ -59,11 +59,11 @@ export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray
                 return existing
             }
 
-            const encode = step.kind === 'color' && step.name === 'channels' ? encodeChannels : Number
-            const isPaint = step.kind === 'source' && step.name === 'paint'
+            const definition = step.kind === 'select' ? undefined : definitions[step.name]
+            const encode = definition?.encode ?? Number
 
             const declareComponent = (value: Parameter, index: number) => {
-                if (isChain(value)) {
+                if (isImage(value)) {
                     return value
                 }
 
@@ -72,7 +72,7 @@ export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray
                 }
 
                 const name = `parameter${uniforms.length}`
-                uniforms.push(isPaint ? { name, value, encode, colorChannel: index } : { name, value, encode })
+                uniforms.push(definition?.hasColorChannels ? { name, value, encode, colorChannel: index } : { name, value, encode })
                 return name
             }
 
@@ -125,7 +125,7 @@ export const generateGraph = (screen: Chain | undefined, previews: ReadonlyArray
         },
     }
 
-    const roots = [screen, ...previews].filter((chain) => chain !== undefined).map((chain) => chain.operation)
+    const roots = [screen, ...previews].filter((image) => image !== undefined).map((image) => image.operation)
 
     const getPreviewScope = (operation: Operation): Feedback | undefined => {
         if (!hasFreePrevious(operation)) {

@@ -1,7 +1,7 @@
 import { generateGraph, type Graph, type MediaInput } from '@lovechild/core'
 import { createRenderer, type CompiledGraph, type MediaElement } from '@lovechild/webgl'
 import * as strudel from '@strudel/core'
-import { Cyclist, Hap, isPattern, setTime, silence, stack, type Pattern } from '@strudel/core'
+import { Cyclist, Hap, isPattern, Pattern, setTime, silence, stack, type State } from '@strudel/core'
 import { cleanupDraw } from '@strudel/draw'
 import * as mini from '@strudel/mini'
 import * as tonal from '@strudel/tonal'
@@ -16,9 +16,12 @@ import type { Block } from './names'
 import './events'
 import { createMediaElement, releaseMediaElement } from './media'
 import { createTextLayer, type TextLayer } from './text'
-import { createValueReader, getNamedChains, layerChains, type ValueReader } from './visuals'
+import { createValueReader, getNamedImages, layerImages, type ValueReader } from './visuals'
+import { createWarningList, type Location, type Warning, type WarningList } from './warnings'
 
 const sampleHost = 'https://strudel.b-cdn.net'
+
+const logEvent = 'strudel.log'
 
 interface Visual {
     graph: CompiledGraph
@@ -43,6 +46,8 @@ export interface EvaluationResult {
 
 export interface RuntimeOptions {
     onFrame: (time: number, haps: ReadonlyArray<Hap>) => void
+    onWarning?: (warning: Warning) => void
+    onPlaybackError?: (error: Error, locations: ReadonlyArray<Location>) => void
     scope?: Record<string, unknown>
 }
 
@@ -57,7 +62,50 @@ const fillWhole = (hap: Hap) => hap.whole === undefined ? new Hap(hap.part, hap.
 export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions): Runtime => {
     const renderer = createRenderer(canvas)
     const audioContext = getAudioContext()
-    const scheduler = new Cyclist({ getTime: () => audioContext.currentTime, onTrigger: webaudioOutput })
+    const reportedErrors = new Set<string>()
+
+    const reportError = (error: unknown, locations?: ReadonlyArray<Location>) => {
+        const found = error instanceof Error ? error : new Error(String(error))
+        const key = JSON.stringify([found.message, locations])
+
+        if (!reportedErrors.has(key)) {
+            reportedErrors.add(key)
+            options.onPlaybackError?.(found, locations ?? [])
+        }
+    }
+
+    const isErrorLog = (detail: { message?: unknown, type?: unknown }) => detail.type === 'error' || /^\[\w+\] error: /.test(String(detail.message))
+
+    const readLog = (event: Event) => {
+        if (event instanceof CustomEvent && event.detail && isErrorLog(event.detail)) {
+            reportError(new Error(String(event.detail.message)))
+        }
+    }
+
+    const readHaps = (read: () => Array<Hap>) => {
+        try {
+            return read()
+        } catch (error) {
+            reportError(error)
+            return []
+        }
+    }
+
+    const guardPattern = (pattern: Pattern) => new Pattern((state: State) => {
+        try {
+            return pattern.query(state)
+        } catch (error) {
+            reportError(error)
+            return []
+        }
+    })
+
+    const playHap = (...values: Parameters<typeof webaudioOutput>) => {
+        const [hap] = values
+        webaudioOutput(...values).catch((error) => reportError(error, hap.context.locations))
+    }
+
+    const scheduler = new Cyclist({ getTime: () => audioContext.currentTime, onTrigger: playHap, onError: reportError })
     const previewElements = new Map<string, HTMLElement>()
     const mediaElements = new Map<string, MediaElement>()
     let sound: Pattern = silence
@@ -66,6 +114,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
     let frame = 0
 
     setTime(() => scheduler.now())
+    document.addEventListener(logEvent, readLog)
     registerSynthSounds()
     samples('github:tidalcycles/dirt-samples')
     samples(sampleHost + '/tidal-drum-machines.json', sampleHost + '/tidal-drum-machines/machines/').then(() => aliasBank(sampleHost + '/tidal-drum-machines-alias.json'))
@@ -130,13 +179,13 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
     }
 
     const createGraph = (blocks: ReadonlyArray<Block>, previews: ReadonlyArray<Preview>, names: ReadonlyMap<string, Block>) => {
-        const chain = layerChains(blocks)
+        const image = layerImages(blocks)
 
-        if (chain === undefined && previews.length === 0) {
+        if (image === undefined && previews.length === 0) {
             return undefined
         }
 
-        return generateGraph(chain, previews.map((preview) => preview.chain), getNamedChains(names))
+        return generateGraph(image, previews.map((preview) => preview.image), getNamedImages(names))
     }
 
     const createTextLayers = (inputs: ReadonlyArray<MediaInput>) => inputs.flatMap((input) => {
@@ -144,10 +193,10 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         return input.name === 'text' && element instanceof HTMLCanvasElement ? [createTextLayer(element, input.settings)] : []
     })
 
-    const createVisual = (graph: Graph, previews: ReadonlyArray<Preview>): Visual => {
+    const createVisual = (graph: Graph, previews: ReadonlyArray<Preview>, warnings: WarningList): Visual => {
         return {
             graph: renderer.compile(graph),
-            reader: createValueReader(graph.uniforms),
+            reader: createValueReader(graph.uniforms, warnings),
             previews: previews.map((preview) => getPreviewElement(preview.id)),
             media: graph.media.map(getMediaElement),
             texts: createTextLayers(graph.media),
@@ -163,15 +212,16 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
 
         const time = getVisualTime()
         const haps = sound.queryArc(time, time)
+        const shown = visual
 
-        if (visual) {
-            haps.push(...visual.reader.updateValues(time).map(fillWhole))
+        if (shown) {
+            haps.push(...readHaps(() => shown.reader.updateValues(time)).map(fillWhole))
 
-            for (const text of visual.texts) {
-                haps.push(...text.update(time, canvas.width, canvas.height).map(fillWhole))
+            for (const text of shown.texts) {
+                haps.push(...readHaps(() => text.update(time, canvas.width, canvas.height)).map(fillWhole))
             }
 
-            renderer.draw(visual.graph, visual.reader.values, time, visual.previews, visual.media)
+            renderer.draw(shown.graph, shown.reader.values, time, shown.previews, shown.media)
         }
 
         options.onFrame(time, haps)
@@ -186,14 +236,21 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
             await audioReady
 
             cleanupDraw(true)
+            reportedErrors.clear()
 
-            const { blocks, names, previews, miniLocations, widgets, transpiled } = await evaluateCode(code, scope)
+            const { blocks, names, previews, miniLocations, widgets, transpiled, reports } = await evaluateCode(code, scope)
+            const warnings = createWarningList(code, options.onWarning)
+
+            for (const { details, place } of reports) {
+                warnings.add(details, place)
+            }
+
             const graph = createGraph(blocks, previews, names)
             const sounds = blocks.filter(isPattern)
 
-            visual = graph && createVisual(graph, previews)
+            visual = graph && createVisual(graph, previews, warnings)
             releaseUnusedMedia(graph?.media ?? [])
-            sound = sounds.length > 0 ? stack(...sounds) : silence
+            sound = sounds.length > 0 ? guardPattern(stack(...sounds)) : silence
             await scheduler.setPattern(sound)
 
             if (!visual) {
@@ -219,6 +276,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         },
         destroy: () => {
             cancelAnimationFrame(frame)
+            document.removeEventListener(logEvent, readLog)
             scheduler.stop()
             releaseUnusedMedia([])
             renderer.destroy()

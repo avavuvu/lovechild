@@ -1,7 +1,7 @@
 import type { OperationName } from '../operation'
 import type { BufferInput, Frame, Pass, Target } from './graph'
-import { functionHelpers, helpers, type Helper } from './helpers'
-import { library } from './library'
+import { definitions } from '../steps'
+import { helpers, type Helper } from './helpers'
 
 export const baseCoordinate = 'coordinate'
 
@@ -41,7 +41,7 @@ export const createShader = () => {
     const useFunction = (name: OperationName) => {
         functions.add(name)
 
-        for (const helper of functionHelpers[name] ?? []) {
+        for (const helper of definitions[name].helpers ?? []) {
             usedHelpers.add(helper)
         }
     }
@@ -79,7 +79,7 @@ export const createShader = () => {
                 'out vec4 fragmentColor;',
             ],
             ...Array.from(usedHelpers, (helper) => [helpers[helper].trim()]),
-            ...Array.from(functions, (name) => [library[name].trim()]),
+            ...Array.from(functions, (name) => [definitions[name].glsl.trim()]),
             [
                 'void main() {',
                 '    vec2 ' + baseCoordinate + ' = (gl_FragCoord.xy - origin - 0.5 * resolution) / min(resolution.x, resolution.y) + 0.5;',

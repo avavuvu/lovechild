@@ -9,12 +9,15 @@ import './selections'
 import { evaluateCode } from './evaluate'
 import { imageFunctions } from './images'
 import { createInput, type Input } from './inputs'
-import { createValueReader, getNamedChains, layerChains } from './visuals'
+import { createValueReader, getNamedImages, layerImages } from './visuals'
+import { createWarningList, type Warning } from './warnings'
 
 export type { Input, TriggerOptions } from './inputs'
+export type { Location, Warning } from './warnings'
 
 export interface VisualsOptions {
     getTime: () => number
+    onWarning?: (warning: Warning) => void
 }
 
 export interface CompiledVisual {
@@ -58,9 +61,15 @@ export const createVisuals = (options: VisualsOptions): Visuals => {
                 setcpm: (cpm: number) => setCps(cpm / 60),
             }
 
-            const { blocks, names, transpiled } = await evaluateCode(code, scope, inputs)
-            const graph = generateGraph(layerChains(blocks), [], getNamedChains(names))
-            const reader = createValueReader(graph.uniforms)
+            const { blocks, names, transpiled, reports } = await evaluateCode(code, scope, inputs)
+            const warnings = createWarningList(code, options.onWarning)
+
+            for (const { details, place } of reports) {
+                warnings.add(details, place)
+            }
+
+            const graph = generateGraph(layerImages(blocks), [], getNamedImages(names))
+            const reader = createValueReader(graph.uniforms, warnings)
             const sounds = blocks.filter(isPattern)
 
             return {

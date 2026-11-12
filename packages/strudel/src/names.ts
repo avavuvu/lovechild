@@ -1,7 +1,7 @@
-import { isChain, previous, type Chain } from '@lovechild/core'
+import { isImage, previous, type Image } from '@lovechild/core'
 import type { Pattern } from '@strudel/core'
 
-export type Block = Chain | Pattern
+export type Block = Image | Pattern
 
 export const isName = (key: string) => key.length > 1 && key.startsWith('$')
 
@@ -42,7 +42,7 @@ export const createNames = (inputs: ReadonlyMap<string, Block>) => {
     const defineName = (name: string, block: Block) => {
         blocks.set(name, block)
 
-        if (isChain(block)) {
+        if (isImage(block)) {
             blockNames.set(block, name)
         }
     }

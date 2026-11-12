@@ -1,58 +1,57 @@
 import { syntaxTree } from '@codemirror/language'
-import { StateField, type EditorState, type Range } from '@codemirror/state'
+import type { EditorState, Range } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
-import { textStyleNames } from '@lovechild/strudel'
+import { isTextStyle } from '@lovechild/strudel'
 import type { SyntaxNode } from '@lezer/common'
+import { createSyntaxField } from './syntax'
 
 const textFunction = 'text'
-
-const textStyles = new Set(textStyleNames)
 
 const patternStringMark = Decoration.mark({ class: 'cm-pattern-string' })
 
 const textMark = Decoration.mark({ class: 'cm-text-function' })
 
+const readText = (state: EditorState, node: SyntaxNode) => state.sliceDoc(node.from, node.to)
+
 const isPatternString = (state: EditorState, node: SyntaxNode) => node.name === 'TemplateString' || (node.name === 'String' && state.sliceDoc(node.from, node.from + 1) === '"')
 
+const isStyleMethod = (state: EditorState, node: SyntaxNode) => node.name === 'PropertyName' && isTextStyle(readText(state, node))
+
+const getParentIfFirst = (node: SyntaxNode, name: string) => node.parent?.name === name && node.parent.firstChild?.from === node.from ? node.parent : null
+
 const findStyleMethods = (state: EditorState, call: SyntaxNode): Array<SyntaxNode> => {
-    const member = call.parent
+    const member = getParentIfFirst(call, 'MemberExpression')
+    const nextCall = member && getParentIfFirst(member, 'CallExpression')
+    const method = member?.lastChild
 
-    if (member?.name !== 'MemberExpression' || member.firstChild?.from !== call.from || member.parent?.name !== 'CallExpression') {
+    if (!nextCall || !method || !isStyleMethod(state, method)) {
         return []
     }
 
-    const property = member.lastChild
-
-    if (property?.name !== 'PropertyName' || !textStyles.has(state.sliceDoc(property.from, property.to))) {
-        return []
-    }
-
-    return [property, ...findStyleMethods(state, member.parent)]
+    return [method, ...findStyleMethods(state, nextCall)]
 }
 
-const findTextCalls = (state: EditorState, node: SyntaxNode) => {
-    const call = node.parent
+const findTextCall = (state: EditorState, node: SyntaxNode) => {
+    const call = getParentIfFirst(node, 'CallExpression')
 
-    if (node.name !== 'VariableName' || call?.name !== 'CallExpression' || call.firstChild?.from !== node.from || state.sliceDoc(node.from, node.to) !== textFunction) {
+    if (!call || node.name !== 'VariableName' || readText(state, node) !== textFunction) {
         return []
     }
 
     return [node, ...findStyleMethods(state, call)]
 }
 
-const createTokenMarks = (state: EditorState): DecorationSet => {
+const findTokenMarks = (state: EditorState): DecorationSet => {
     const marks: Array<Range<Decoration>> = []
 
     syntaxTree(state).iterate({
-        enter: (reference) => {
-            const { node } = reference
-
+        enter: ({ node }) => {
             if (isPatternString(state, node)) {
                 marks.push(patternStringMark.range(node.from, node.to))
                 return false
             }
 
-            for (const name of findTextCalls(state, node)) {
+            for (const name of findTextCall(state, node)) {
                 marks.push(textMark.range(name.from, name.to))
             }
 
@@ -63,11 +62,6 @@ const createTokenMarks = (state: EditorState): DecorationSet => {
     return Decoration.set(marks, true)
 }
 
-export const tokenColors = StateField.define<DecorationSet>({
-    create: createTokenMarks,
-    update: (value, transaction) => {
-        const hasChanged = transaction.docChanged || syntaxTree(transaction.startState) !== syntaxTree(transaction.state)
-        return hasChanged ? createTokenMarks(transaction.state) : value
-    },
-    provide: (field) => EditorView.decorations.from(field),
-})
+const tokenField = createSyntaxField(findTokenMarks)
+
+export const tokenColors = [tokenField, EditorView.decorations.from(tokenField)]

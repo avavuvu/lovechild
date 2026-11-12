@@ -33,6 +33,10 @@ const settings = {
     soundBlock: '#ff757f',
     brackets: ['#179fff', '#da70d6', '#ffd700'],
     matchingBracket: '#ffffff33',
+    warningLine: 'rgba(255, 170, 0, 0.2)',
+    errorLine: 'rgba(255, 85, 85, 0.3)',
+    warningText: '#ffaa00',
+    errorText: '#d00000',
 }
 
 const bracketRules = Object.fromEntries(Array.from({ length: bracketDepths }, (_value, depth) => [
@@ -88,6 +92,25 @@ const layout = EditorView.theme({
     },
     '.cm-text-function, .cm-text-function *': {
         color: settings.textFunction,
+    },
+    '.cm-line.cm-warning-line': {
+        background: settings.warningLine,
+    },
+    '.cm-line.cm-error-line': {
+        background: settings.errorLine,
+    },
+    '.cm-line-message': {
+        width: 'fit-content',
+        padding: '0 6px 0 2ch',
+        background: settings.lineBackground,
+    },
+    '.cm-warning-message': {
+        fontSize: '0.85em',
+        color: settings.warningText,
+    },
+    '.cm-error-message': {
+        color: settings.errorText,
+        background: 'none',
     },
     '&.cm-focused .cm-matchingBracket': {
         backgroundColor: settings.matchingBracket,

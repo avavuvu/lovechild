@@ -1,48 +1,61 @@
 import { syntaxTree } from '@codemirror/language'
-import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state'
-import { Decoration, EditorView, GutterMarker, gutterLineClass } from '@codemirror/view'
-import { getBlockName, imageFunctionNames, isName } from '@lovechild/strudel'
+import { RangeSet, type EditorState, type Range } from '@codemirror/state'
+import { Decoration, EditorView, GutterMarker, gutterLineClass, type DecorationSet } from '@codemirror/view'
+import { getBlockName, isImageFunction, isName } from '@lovechild/strudel'
 import type { SyntaxNode } from '@lezer/common'
+import { createSyntaxField } from './syntax'
 
-type BlockKind = 'image' | 'sound'
+type Kind = 'image' | 'sound'
 
-interface Range { from: number, to: number, kind: BlockKind }
+interface Marks { lines: RangeSet<GutterMarker>, names: DecorationSet }
 
-interface Blocks { lines: ReadonlyArray<Range>, names: ReadonlyArray<Range> }
+class LineMarker extends GutterMarker {
+    constructor(kind: Kind) {
+        super()
+        this.elementClass = `cm-${kind}-block`
+    }
+}
 
-const imageFunctions = new Set(imageFunctionNames)
+const lineMarkers: Record<Kind, GutterMarker> = {
+    image: new LineMarker('image'),
+    sound: new LineMarker('sound'),
+}
+
+const nameMarks: Record<Kind, Decoration> = {
+    image: Decoration.mark({ class: 'cm-image-name' }),
+    sound: Decoration.mark({ class: 'cm-sound-name' }),
+}
 
 const chainNodes = new Set(['ExpressionStatement', 'CallExpression', 'MemberExpression', 'ParenthesizedExpression'])
 
-const stringNodes = new Set(['String', 'TemplateString'])
+const findStart = (node: SyntaxNode | null): SyntaxNode | null => {
+    if (node === null || !chainNodes.has(node.name)) {
+        return node
+    }
 
-const getInner = (node: SyntaxNode) => node.name === 'ParenthesizedExpression' ? node.firstChild?.nextSibling ?? null : node.firstChild
+    const inner = node.name === 'ParenthesizedExpression' ? node.firstChild?.nextSibling : node.firstChild
+    return findStart(inner ?? null)
+}
 
-const findRoot = (node: SyntaxNode | null): SyntaxNode | null => node !== null && chainNodes.has(node.name) ? findRoot(getInner(node)) : node
+const getSiblings = (node: SyntaxNode | null): Array<SyntaxNode> => node === null ? [] : [node, ...getSiblings(node.nextSibling)]
 
-const findBlocks = (state: EditorState): Blocks => {
-    const kinds = new Map<string, BlockKind | undefined>()
-    const lines: Array<Range> = []
-    const labels: Array<Range> = []
+const findMarks = (state: EditorState): Marks => {
+    const kinds = new Map<string, Kind | undefined>()
+    const lines: Array<Range<GutterMarker>> = []
+    const names: Array<Range<Decoration>> = []
 
     const readText = (node: SyntaxNode) => state.sliceDoc(node.from, node.to)
 
-    const classifyRoot = (root: SyntaxNode | null): BlockKind | undefined => {
-        if (root === null) {
+    const classify = (node: SyntaxNode | null): Kind | undefined => {
+        const start = findStart(node)
+
+        if (start?.name !== 'VariableName') {
             return undefined
         }
 
-        if (stringNodes.has(root.name)) {
-            return 'sound'
-        }
+        const name = readText(start)
 
-        if (root.name !== 'VariableName') {
-            return undefined
-        }
-
-        const name = readText(root)
-
-        if (imageFunctions.has(name)) {
+        if (isImageFunction(name)) {
             return 'image'
         }
 
@@ -53,101 +66,75 @@ const findBlocks = (state: EditorState): Blocks => {
         return 'sound'
     }
 
-    for (let statement = syntaxTree(state).topNode.firstChild; statement; statement = statement.nextSibling) {
-        if (statement.name === 'VariableDeclaration') {
-            const definition = statement.getChild('VariableDefinition')
+    const markLines = (node: SyntaxNode, kind: Kind) => {
+        const last = state.doc.lineAt(node.to).number
 
-            if (definition) {
-                kinds.set(readText(definition), classifyRoot(findRoot(definition.nextSibling?.nextSibling ?? null)))
-            }
-        }
-
-        if (statement.name === 'LabeledStatement') {
-            const label = statement.getChild('Label')
-            const kind = classifyRoot(findRoot(statement.lastChild))
-            const name = label ? getBlockName(readText(label)) : ''
-
-            if (isName(name)) {
-                kinds.set(name, kind)
-            }
-
-            if (kind) {
-                lines.push({ from: statement.from, to: statement.to, kind })
-            }
-
-            if (kind && label) {
-                labels.push({ from: label.from, to: label.to, kind })
-            }
+        for (let number = state.doc.lineAt(node.from).number; number <= last; number += 1) {
+            lines.push(lineMarkers[kind].range(state.doc.line(number).from))
         }
     }
 
-    const references: Array<Range> = []
+    const markName = (node: SyntaxNode, kind: Kind) => {
+        names.push(nameMarks[kind].range(node.from, node.to))
+    }
+
+    const recordVariable = (declaration: SyntaxNode) => {
+        const definition = declaration.getChild('VariableDefinition')
+        const value = definition?.nextSibling?.nextSibling ?? null
+
+        if (definition) {
+            kinds.set(readText(definition), classify(value))
+        }
+    }
+
+    const recordBlock = (statement: SyntaxNode) => {
+        const label = statement.getChild('Label')
+
+        if (!label) {
+            return
+        }
+
+        const name = getBlockName(readText(label))
+        const kind = classify(statement.lastChild)
+
+        if (isName(name)) {
+            kinds.set(name, kind)
+        }
+
+        if (kind) {
+            markLines(statement, kind)
+            markName(label, kind)
+        }
+    }
+
+    for (const statement of getSiblings(syntaxTree(state).topNode.firstChild)) {
+        if (statement.name === 'VariableDeclaration') {
+            recordVariable(statement)
+        }
+
+        if (statement.name === 'LabeledStatement') {
+            recordBlock(statement)
+        }
+    }
 
     syntaxTree(state).iterate({
-        enter: (node) => {
-            const kind = node.name === 'VariableName' ? kinds.get(readText(node.node)) : undefined
+        enter: ({ node }) => {
+            const name = readText(node)
+            const kind = node.name === 'VariableName' && isName(name) ? kinds.get(name) : undefined
 
-            if (kind && isName(readText(node.node))) {
-                references.push({ from: node.from, to: node.to, kind })
+            if (kind) {
+                markName(node, kind)
             }
         },
     })
 
-    return { lines, names: [...labels, ...references].sort((first, second) => first.from - second.from) }
+    return { lines: RangeSet.of(lines, true), names: Decoration.set(names, true) }
 }
 
-class BlockMarker extends GutterMarker {
-    constructor(kind: BlockKind) {
-        super()
-        this.elementClass = `cm-${kind}-block`
-    }
-}
-
-const markers: Record<BlockKind, BlockMarker> = {
-    image: new BlockMarker('image'),
-    sound: new BlockMarker('sound'),
-}
-
-const nameMarks: Record<BlockKind, Decoration> = {
-    image: Decoration.mark({ class: 'cm-image-name' }),
-    sound: Decoration.mark({ class: 'cm-sound-name' }),
-}
-
-const createMarkers = (state: EditorState, lines: ReadonlyArray<Range>) => {
-    const builder = new RangeSetBuilder<GutterMarker>()
-
-    for (const block of lines) {
-        const last = state.doc.lineAt(block.to).number
-
-        for (let number = state.doc.lineAt(block.from).number; number <= last; number += 1) {
-            const line = state.doc.line(number)
-            builder.add(line.from, line.from, markers[block.kind])
-        }
-    }
-
-    return builder.finish()
-}
-
-const createNameMarks = (names: ReadonlyArray<Range>) => {
-    const builder = new RangeSetBuilder<Decoration>()
-
-    for (const name of names) {
-        builder.add(name.from, name.to, nameMarks[name.kind])
-    }
-
-    return builder.finish()
-}
-
-const blockField = StateField.define<Blocks>({
-    create: findBlocks,
-    update: (value, transaction) => {
-        const hasChanged = transaction.docChanged || syntaxTree(transaction.startState) !== syntaxTree(transaction.state)
-        return hasChanged ? findBlocks(transaction.state) : value
-    },
-})
+const markField = createSyntaxField(findMarks)
 
 export const blockMarkers = [
-    blockField,
-    gutterLineClass.compute([blockField], (state) => createMarkers(state, state.field(blockField).lines)),
-    EditorView.decorations.compute([blockField], (state) => createNameMarks(state.field(blockField).names)),
+    markField,
+    gutterLineClass.from(markField, (marks) => marks.lines),
+    EditorView.decorations.from(markField, (marks) => marks.names),
 ]

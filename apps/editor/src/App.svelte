@@ -1,9 +1,11 @@
 <script lang="ts">
-    import { createRuntime, type Runtime } from '@lovechild/strudel'
+    import { createRuntime, locateError, type Location, type Runtime, type Warning } from '@lovechild/strudel'
     import { slider, sliderWithID } from '@strudel/codemirror/slider.mjs'
     import { onMount } from 'svelte'
     import { createEditor, type Editor } from './editor'
+    import type { LineMessage } from './lines'
     import { formatOutput, type Display, type Output } from './output'
+    import { describeError, describeWarning, type Notice } from './messages'
     import Panel from './Panel.svelte'
     import Toolbar from './Toolbar.svelte'
     import { createViewer, type Viewer } from './viewer'
@@ -25,18 +27,53 @@
     let isPanelOpen = $state(true)
     let output: Output = $state.raw({ code: '', transpiled: '', graph: undefined })
     let display: Display = $state('code')
+    let warnings: Array<Warning> = []
+    let errors: Array<LineMessage> = []
+    let notices: Array<Notice> = $state([])
+
+    const addNotice = (notice: Notice) => {
+        notices = [...notices, notice]
+    }
+
+    const showWarning = (warning: Warning) => {
+        console.warn(warning)
+
+        if (warning.locations.length === 0) {
+            addNotice({ kind: 'warning', text: describeWarning(warning) })
+        }
+
+        warnings = [...warnings, warning]
+        editor?.showWarnings(warnings.flatMap((shown) => shown.locations.map((location) => ({ location, text: describeWarning(shown) }))))
+    }
+
+    const showError = (error: unknown, locations: ReadonlyArray<Location>) => {
+        console.error(error)
+
+        if (locations.length === 0) {
+            addNotice({ kind: 'error', text: describeError(error) })
+        }
+
+        errors = [...errors, ...locations.map((location) => ({ location, text: describeError(error) }))]
+        editor?.showErrors(errors)
+    }
 
     const evaluateCode = async (code: string) => {
         if (!runtime || !editor) {
             return
         }
 
+        warnings = []
+        errors = []
+        notices = []
+        editor.showWarnings([])
+        editor.showErrors([])
+
         try {
             const result = await runtime.evaluate(code)
             editor.showEvaluation(result)
             output = { code, transpiled: result.transpiled, graph: result.graph }
         } catch (error) {
-            console.error(error)
+            showError(error, locateError(error))
         }
     }
 
@@ -51,6 +88,8 @@
     onMount(() => {
         runtime = createRuntime(canvas, {
             onFrame: (time, haps) => editor?.highlight(time, haps),
+            onWarning: showWarning,
+            onPlaybackError: showError,
             scope: { slider, sliderWithID },
         })
 
@@ -109,19 +148,20 @@
         onPlay={() => editor?.evaluate()}
         onStop={() => runtime?.stop()}
         onSelect={selectExample}
+        {notices}
         bind:isExpanded={isPanelOpen}
     >
         <Panel bind:display>
-        <p>
-        lovechild is an open source video synth
-        </p>
-        <p>
-        it is based on the live-coding platform <a href="https://strudel.cc/">strudel</a>,
-        combining it with a video synth inspired by <a href="https://hydra.ojack.xyz/?">hydra</a>.
-        </p>
-        <p>
-        made by <a href="https://avavu.au">ava dinh-vu</a>
-        </p>
+            <p>
+            lovechild is an open source video synth
+            </p>
+            <p>
+            it is based on the live-coding platform <a href="https://strudel.cc/">strudel</a>,
+            combining it with a video synth inspired by <a href="https://hydra.ojack.xyz/?">hydra</a>.
+            </p>
+            <p>
+            made by <a href="https://avavu.au">ava dinh-vu</a>
+            </p>
         </Panel>
     </Toolbar>
 <main class:narrow={isPanelOpen}>

@@ -1,4 +1,9 @@
-import type { Chain } from './chain'
+import type { Image } from './image'
+import type { colors } from './steps/colors'
+import type { combines } from './steps/combines'
+import type { coordinates } from './steps/coordinates'
+import type { sources } from './steps/sources'
+import type { splits } from './steps/splits'
 
 export interface Signal {
     queryArc: (begin: number, end: number) => ReadonlyArray<{ readonly value: unknown }>
@@ -6,19 +11,19 @@ export interface Signal {
 
 export type Value = number | string | Signal
 
-export type Parameter = Value | Chain
+export type Parameter = Value | Image
 
 export type Argument = Parameter | ReadonlyArray<Parameter>
 
-export type SourceName = 'osc' | 'shape' | 'solid' | 'noise' | 'simplex' | 'voronoi' | 'gradient' | 'empty' | 'paint' | 'hsv' | 'oklch'
+export type SourceName = keyof typeof sources
 
-export type CoordinateName = 'rotate' | 'scale' | 'move' | 'kaleid' | 'pixelate' | 'repeat'
+export type CoordinateName = keyof typeof coordinates
 
-export type ColorName = 'invert' | 'channels' | 'range' | 'brightness' | 'contrast' | 'saturate' | 'hue' | 'colorama' | 'shift' | 'grey' | 'posterize' | 'thresh' | 'luma'
+export type ColorName = keyof typeof colors
 
-export type CombineName = 'add' | 'sub' | 'mult' | 'diff' | 'layer' | 'mask' | 'blend' | 'screen'
+export type CombineName = keyof typeof combines
 
-export type SplitName = 'split'
+export type SplitName = keyof typeof splits
 
 export type OperationName = SourceName | CoordinateName | ColorName | CombineName | SplitName
 

@@ -1,13 +1,13 @@
-import type { Chain } from '../chain'
+import type { Image } from '../image'
 import type { Feedback, Media, Operation, Select, Step, Text } from '../operation'
 import { createCache } from './cache'
 import type { Pass, Target } from './graph'
-import { stepShapes, type Shape } from '../steps'
+import { definitions, type Shape } from '../steps'
 import { baseCoordinate, createShader } from './shader'
 
 type Scope = Feedback | undefined
 
-export type Component = string | Chain
+export type Component = string | Image
 
 export type Declared = Component | ReadonlyArray<Component>
 
@@ -71,7 +71,7 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
     }
 
     const emitParameters = (step: Step | Select, coordinate: string, scope: Scope) => {
-        const shapes = step.kind === 'select' ? ['scalar' as const] : stepShapes[step.name]
+        const shapes = step.kind === 'select' ? ['scalar' as const] : definitions[step.name].shapes
         return resources.declareUniforms(step).map((declared, index) => emitArgument(declared, shapes[index] ?? 'scalar', coordinate, scope))
     }
 

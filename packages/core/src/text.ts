@@ -1,8 +1,8 @@
-import { Chain, isChain } from './chain'
+import { Image, isImage } from './image'
 import { paint as createPaint } from './sources'
 import type { Operation, TextSettings, Value } from './operation'
 
-type Paint = Value | Chain
+type Paint = Value | Image
 
 interface TextParts {
     settings: TextSettings
@@ -12,9 +12,11 @@ interface TextParts {
 
 const defaultOutline = 0.5
 
-const toOperation = (paint: Paint): Operation => isChain(paint) ? paint.operation : createPaint(paint).operation
+const defaultWrap = 0.5
 
-export class TextChain extends Chain {
+const toOperation = (paint: Paint): Operation => isImage(paint) ? paint.operation : createPaint(paint).operation
+
+export class TextImage extends Image {
     readonly parts: TextParts
 
     constructor(parts: TextParts) {
@@ -23,31 +25,35 @@ export class TextChain extends Chain {
     }
 
     font(family: Value) {
-        return this.change({ settings: { ...this.parts.settings, font: family } })
+        return this.#change({ settings: { ...this.parts.settings, font: family } })
     }
 
     fill(paint: Paint) {
-        return this.change({ fill: toOperation(paint) })
+        return this.#change({ fill: toOperation(paint) })
     }
 
     stroke(paint: Paint) {
         const { settings } = this.parts
-        return this.change({ stroke: toOperation(paint), settings: { ...settings, outline: settings.outline ?? defaultOutline } })
+        return this.#change({ stroke: toOperation(paint), settings: { ...settings, outline: settings.outline ?? defaultOutline } })
     }
 
-    outline(width: Value = defaultOutline) {
-        return this.change({ settings: { ...this.parts.settings, outline: width } })
+    outline(width?: Value) {
+        return this.#change({ settings: { ...this.parts.settings, outline: width ?? defaultOutline } })
     }
 
-    wrap(width: Value = 0.5) {
-        return this.change({ settings: { ...this.parts.settings, wrap: width } })
+    wrap(width?: Value) {
+        return this.#change({ settings: { ...this.parts.settings, wrap: width ?? defaultWrap } })
     }
 
-    private change(parts: Partial<TextParts>) {
-        return new TextChain({ ...this.parts, ...parts })
+    #change(parts: Partial<TextParts>) {
+        return new TextImage({ ...this.parts, ...parts })
     }
 }
 
-export const textStyleNames: ReadonlyArray<string> = ['font', 'fill', 'stroke', 'outline', 'wrap']
+export const textStyleNames: ReadonlyArray<string> = Object.getOwnPropertyNames(TextImage.prototype).filter((name) => name !== 'constructor')
 
-export const text = (content: Value = '') => new TextChain({ settings: { content }, fill: toOperation('white'), stroke: toOperation('black') })
+const textStyles: ReadonlySet<string> = new Set(textStyleNames)
+
+export const isTextStyle = (name: string) => textStyles.has(name)
+
+export const text = (content?: Value) => new TextImage({ settings: { content: content ?? '' }, fill: toOperation('white'), stroke: toOperation('black') })

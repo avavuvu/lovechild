@@ -59,7 +59,7 @@ declare module '@strudel/core' {
         readonly cps: number
         readonly latency: number
         readonly clock: { duration: number }
-        constructor(options: { getTime: () => number, onTrigger: Trigger })
+        constructor(options: { getTime: () => number, onTrigger: Trigger, onError?: (error: unknown) => void })
         now(): number
         setCps(cps: number): void
         setPattern(pattern: Pattern): Promise<void>
@@ -120,7 +120,7 @@ declare module '@strudel/tonal' {
 declare module '@strudel/webaudio' {
     import type { Trigger } from '@strudel/core'
 
-    export const webaudioOutput: Trigger
+    export const webaudioOutput: (...values: Parameters<Trigger>) => Promise<void>
     export const getAudioContext: () => AudioContext
     export const initAudio: () => Promise<void>
     export const registerSynthSounds: () => void

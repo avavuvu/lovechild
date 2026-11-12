@@ -14,6 +14,7 @@ import type { Widget } from '@strudel/transpiler'
 import { blockMarkers } from './blocks'
 import { bracketColors } from './brackets'
 import { createKeyHandler } from './keys'
+import { errorLines, warningLines, type LineMessage } from './lines'
 import { theme } from './theme'
 import { tokenColors } from './tokens'
 
@@ -28,6 +29,8 @@ export interface Editor {
     setCode: (code: string) => void
     showEvaluation: (result: EvaluationResult) => void
     highlight: (time: number, haps: ReadonlyArray<Hap>) => void
+    showWarnings: (messages: ReadonlyArray<LineMessage>) => void
+    showErrors: (messages: ReadonlyArray<LineMessage>) => void
     destroy: () => void
 }
 
@@ -113,6 +116,8 @@ export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Edi
                 blockMarkers,
                 bracketColors,
                 tokenColors,
+                warningLines.extension,
+                errorLines.extension,
                 bracketMatching(),
                 theme,
             ],
@@ -132,6 +137,8 @@ export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Edi
             updateSliderWidgets(view, widgets)
         },
         highlight: (time, haps) => highlightMiniLocations(view, time, haps),
+        showWarnings: (messages) => view.dispatch({ effects: warningLines.setMessages.of(messages) }),
+        showErrors: (messages) => view.dispatch({ effects: errorLines.setMessages.of(messages) }),
         destroy: () => view.destroy(),
     }
 }
