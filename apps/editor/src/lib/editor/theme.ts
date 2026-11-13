@@ -11,6 +11,7 @@ const bracketRules = Object.fromEntries(Array.from({ length: bracketDepths }, (_
 const layout = EditorView.theme({
     '&': {
         height: '100%',
+        '--foreground': 'var(--color-foreground)',
         color: 'var(--color-syntax-foreground)',
         backgroundColor: 'transparent',
         fontSize: 'var(--code-font-size)',

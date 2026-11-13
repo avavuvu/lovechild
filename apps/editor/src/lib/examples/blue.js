@@ -1,6 +1,8 @@
-const cam = camera()
-  .b()
+ const cam = osc(13)
   .sub(
-    previous().rg().scale(1.02).rotate(0.02))
+    previous()
+      .scale(1.00001)
+      .rotate(0.02)
+  )
 
-$: cam.screen(cam.moveX(1))
+$: cam.screen(cam.scroll(.1))
