@@ -25,11 +25,11 @@ const findScope = (operation: Operation, target: Operation, scope: Feedback | un
     return undefined
 }
 
-export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray<Image>, blocks: ReadonlyMap<string, Image>): Graph => {
+export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray<Image>, tracks: ReadonlyMap<string, Image>): Graph => {
     const uniforms: Array<Uniform> = []
     const uniformNames = new Map<Operation, ReadonlyArray<Declared>>()
     const buffers = new Map<Feedback, number>()
-    const blockLoops = new Map<string, Feedback>()
+    const trackLoops = new Map<string, Feedback>()
     const media: Array<MediaInput> = []
     const mediaIndexes = new Map<string, number>()
     const textKeys = new Map<Text, string>()
@@ -106,21 +106,21 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
             addPass(feedback.input, feedback, { kind: 'buffer', index })
             return index
         },
-        getBlockLoop: (name) => {
-            const existing = blockLoops.get(name)
+        getTrackLoop: (name) => {
+            const existing = trackLoops.get(name)
 
             if (existing) {
                 return existing
             }
 
-            const block = blocks.get(name)
+            const track = tracks.get(name)
 
-            if (block === undefined) {
+            if (track === undefined) {
                 throw new Error(`${name} is not defined`)
             }
 
-            const loop: Feedback = block.operation.kind === 'feedback' ? block.operation : { kind: 'feedback', input: block.operation }
-            blockLoops.set(name, loop)
+            const loop: Feedback = track.operation.kind === 'feedback' ? track.operation : { kind: 'feedback', input: track.operation }
+            trackLoops.set(name, loop)
             return loop
         },
     }

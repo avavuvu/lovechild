@@ -5,7 +5,7 @@ import { getEntryKey, getHref, strudelPrefix, type DocumentData, type Entry, typ
 import { readLovechildDocs } from './lovechild'
 import { readStrudelDocs } from './strudel'
 
-const reservedNames = ['code', 'explore', 'examples', 'strudel']
+const reservedNames = ['code', 'explore', 'examples']
 
 const markdownFiles = import.meta.glob<string>('../docs/pages/**/*.md', { query: '?raw', import: 'default', eager: true })
 
@@ -20,7 +20,7 @@ const isGenerated = (namespace: Namespace, name: string) => generated.some((doc)
 const createEntries = (): ReadonlyArray<Entry> => {
     const written = markdownPages
         .filter((page) => !isGenerated(page.namespace, page.name))
-        .map((page) => ({ namespace: page.namespace, name: page.name, categories: [page.category ?? 'other'], synonyms: [], parameters: [], description: '', examples: [] }))
+        .map((page) => ({ namespace: page.namespace, name: page.name, categories: [page.category ?? 'other'], synonyms: [], parameters: page.parameters, description: '', examples: [] }))
 
     const lovechildNames = new Set([...lovechild, ...written].filter((doc) => doc.namespace === 'lovechild').map((doc) => doc.name))
 
@@ -47,12 +47,21 @@ if (reservedEntry) {
     throw new Error(`${reservedEntry.name} is a reserved page name`)
 }
 
-const linkTargets = new Map(entries.flatMap((entry) => {
-    const prefix = entry.namespace === 'strudel' ? strudelPrefix : ''
-    return [entry.name, ...entry.synonyms].map((name): [string, Entry] => [`${prefix}${name}`, entry])
-}))
+const readLinkNames = (entry: Entry) => [entry.name, ...entry.synonyms]
 
-export const findLinkTarget = (target: string) => linkTargets.get(target)
+const strudelFallbacks = entries.filter((entry) => entry.namespace === 'strudel').flatMap((entry) => readLinkNames(entry).map((name): [string, Entry] => [name, entry]))
+
+const linkTargets = new Map([...strudelFallbacks, ...entries.flatMap((entry) => {
+    const prefix = entry.namespace === 'strudel' ? strudelPrefix : ''
+    return readLinkNames(entry).map((name): [string, Entry] => [`${prefix}${name}`, entry])
+})])
+
+const linkNamesByLowerCase = new Map(Array.from(linkTargets.keys()).reverse().map((name) => [name.toLowerCase(), name]))
+
+export const findLinkTarget = (target: string) => {
+    const name = target.replace(/\(\)$/, '')
+    return linkTargets.get(name) ?? linkTargets.get(linkNamesByLowerCase.get(name.toLowerCase()) ?? '')
+}
 
 export const readLinks = (namespace: Namespace, name: string) => Object.entries(markdownFiles)
     .filter(([path]) => readNamespace(path.replace('../docs', '.')) === namespace && getFileName(path) === name)

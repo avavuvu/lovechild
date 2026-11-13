@@ -3,7 +3,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { javascript, javascriptLanguage } from '@codemirror/lang-javascript'
 import { bracketMatching } from '@codemirror/language'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
-import { crosshairCursor, Decoration, drawSelection, dropCursor, EditorView, highlightSpecialChars, keymap, lineNumbers, rectangularSelection, WidgetType, type DecorationSet } from '@codemirror/view'
+import { crosshairCursor, Decoration, drawSelection, dropCursor, EditorView, highlightSpecialChars, keymap, lineNumbers, rectangularSelection, ViewPlugin, WidgetType, type DecorationSet } from '@codemirror/view'
 import { previewNames, type EvaluationResult } from '@lovechild/strudel'
 import { flash, flashField } from '@strudel/codemirror/flash.mjs'
 import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror/highlight.mjs'
@@ -11,11 +11,12 @@ import { sliderPlugin, updateSliderWidgets } from '@strudel/codemirror/slider.mj
 import { BlockWidget, setWidget } from '@strudel/codemirror/widget.mjs'
 import type { Hap } from '@strudel/core'
 import type { Widget } from '@strudel/transpiler'
-import { blockMarkers } from './blocks'
+import { trackMarkers } from './tracks'
 import { bracketColors } from './brackets'
 import { createKeyHandler } from './keys'
 import { errorLines, warningLines, type LineMessage } from './lines'
 import { theme } from './theme'
+import { createToggles } from './toggles'
 import { tokenColors } from './tokens'
 
 export interface EditorOptions {
@@ -82,6 +83,12 @@ const widgetField = StateField.define<DecorationSet>({
     provide: (field) => EditorView.decorations.from(field),
 })
 
+const remeasureOnResize = ViewPlugin.define((view) => {
+    const observer = new ResizeObserver(() => view.requestMeasure())
+    observer.observe(view.contentDOM)
+    return { destroy: () => observer.disconnect() }
+})
+
 export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Editor => {
     const evaluate = (view: EditorView) => {
         flash(view)
@@ -112,8 +119,10 @@ export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Edi
                 highlightExtension,
                 flashField,
                 widgetField,
+                remeasureOnResize,
                 sliderPlugin,
-                blockMarkers,
+                trackMarkers,
+                createToggles(evaluate),
                 bracketColors,
                 tokenColors,
                 warningLines.extension,

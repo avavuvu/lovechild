@@ -13,7 +13,12 @@ const textMark = Decoration.mark({ class: 'cm-text-function' })
 
 const readText = (state: EditorState, node: SyntaxNode) => state.sliceDoc(node.from, node.to)
 
-const isPatternString = (state: EditorState, node: SyntaxNode) => node.name === 'TemplateString' || (node.name === 'String' && state.sliceDoc(node.from, node.from + 1) === '"')
+const isTrackName = (state: EditorState, node: SyntaxNode) => {
+    const member = node.parent?.name === 'ArgList' ? node.parent.parent?.firstChild : null
+    return member?.name === 'MemberExpression' && member.lastChild !== null && readText(state, member.lastChild) === 'track'
+}
+
+const isPatternString = (state: EditorState, node: SyntaxNode) => node.name === 'TemplateString' || (node.name === 'String' && state.sliceDoc(node.from, node.from + 1) === '"' && !isTrackName(state, node))
 
 const isStyleMethod = (state: EditorState, node: SyntaxNode) => node.name === 'PropertyName' && isTextStyle(readText(state, node))
 

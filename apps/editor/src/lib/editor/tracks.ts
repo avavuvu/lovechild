@@ -1,7 +1,7 @@
 import { syntaxTree } from '@codemirror/language'
 import { RangeSet, type EditorState, type Range } from '@codemirror/state'
 import { Decoration, EditorView, GutterMarker, gutterLineClass, type DecorationSet } from '@codemirror/view'
-import { getBlockName, isImageFunction, isName } from '@lovechild/strudel'
+import { getTrackName, isImageFunction, isName } from '@lovechild/strudel'
 import type { SyntaxNode } from '@lezer/common'
 import { createSyntaxField } from './syntax'
 
@@ -12,7 +12,7 @@ interface Marks { lines: RangeSet<GutterMarker>, names: DecorationSet }
 class LineMarker extends GutterMarker {
     constructor(kind: Kind) {
         super()
-        this.elementClass = `cm-${kind}-block`
+        this.elementClass = `cm-${kind}-track`
     }
 }
 
@@ -87,14 +87,14 @@ const findMarks = (state: EditorState): Marks => {
         }
     }
 
-    const recordBlock = (statement: SyntaxNode) => {
+    const recordTrack = (statement: SyntaxNode) => {
         const label = statement.getChild('Label')
 
         if (!label) {
             return
         }
 
-        const name = getBlockName(readText(label))
+        const name = getTrackName(readText(label))
         const kind = classify(statement.lastChild)
 
         if (isName(name)) {
@@ -107,13 +107,41 @@ const findMarks = (state: EditorState): Marks => {
         }
     }
 
+    const recordInnerTrack = (call: SyntaxNode) => {
+        const member = call.firstChild
+        const property = member?.name === 'MemberExpression' ? member.lastChild : null
+        const argument = call.getChild('ArgList')?.getChild('String')
+
+        if (!member || !property || !argument || readText(property) !== 'track') {
+            return
+        }
+
+        const name = getTrackName(readText(argument).slice(1, -1))
+        const kind = classify(member.firstChild)
+
+        if (isName(name) && kind) {
+            kinds.set(name, kind)
+            markName(argument, kind)
+        }
+    }
+
     for (const statement of getSiblings(syntaxTree(state).topNode.firstChild)) {
+        syntaxTree(state).iterate({
+            from: statement.from,
+            to: statement.to,
+            enter: ({ node }) => {
+                if (node.name === 'CallExpression') {
+                    recordInnerTrack(node)
+                }
+            },
+        })
+
         if (statement.name === 'VariableDeclaration') {
             recordVariable(statement)
         }
 
         if (statement.name === 'LabeledStatement') {
-            recordBlock(statement)
+            recordTrack(statement)
         }
     }
 
@@ -133,7 +161,7 @@ const findMarks = (state: EditorState): Marks => {
 
 const markField = createSyntaxField(findMarks)
 
-export const blockMarkers = [
+export const trackMarkers = [
     markField,
     gutterLineClass.from(markField, (marks) => marks.lines),
     EditorView.decorations.from(markField, (marks) => marks.names),

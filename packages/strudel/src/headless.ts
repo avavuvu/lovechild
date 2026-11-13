@@ -5,6 +5,7 @@ import * as mini from '@strudel/mini'
 import * as tonal from '@strudel/tonal'
 import './curves'
 import './events'
+import './sounds'
 import './selections'
 import { evaluateCode } from './evaluate'
 import { imageFunctions } from './images'
@@ -33,7 +34,7 @@ export interface Visuals {
     compile: (code: string) => Promise<CompiledVisual>
 }
 
-const toBlockName = (name: string) => name.startsWith('$') ? name : '$' + name
+const toTrackName = (name: string) => name.startsWith('$') ? name : '$' + name
 
 export const createVisuals = (options: VisualsOptions): Visuals => {
     const inputs = new Map<string, Pattern>()
@@ -41,7 +42,7 @@ export const createVisuals = (options: VisualsOptions): Visuals => {
     return {
         defineInput: (name, pattern) => {
             const created = createInput(options.getTime)
-            inputs.set(toBlockName(name), pattern ? stack(pattern, created.pattern) : created.pattern)
+            inputs.set(toTrackName(name), pattern ? stack(pattern, created.pattern) : created.pattern)
             return created.input
         },
         compile: async (code) => {
@@ -61,16 +62,16 @@ export const createVisuals = (options: VisualsOptions): Visuals => {
                 setcpm: (cpm: number) => setCps(cpm / 60),
             }
 
-            const { blocks, names, transpiled, reports } = await evaluateCode(code, scope, inputs)
+            const { tracks, names, transpiled, reports } = await evaluateCode(code, scope, inputs)
             const warnings = createWarningList(code, options.onWarning)
 
             for (const { details, place } of reports) {
                 warnings.add(details, place)
             }
 
-            const graph = generateGraph(layerImages(blocks), [], getNamedImages(names))
+            const graph = generateGraph(layerImages(tracks), [], getNamedImages(names))
             const reader = createValueReader(graph.uniforms, warnings)
-            const sounds = blocks.filter(isPattern)
+            const sounds = tracks.filter(isPattern)
 
             return {
                 graph,

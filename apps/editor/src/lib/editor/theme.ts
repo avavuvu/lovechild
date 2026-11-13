@@ -15,11 +15,13 @@ const layout = EditorView.theme({
         backgroundColor: 'transparent',
         fontSize: 'var(--code-font-size)',
     },
+
     '&.cm-focused': {
         outline: 'none',
     },
     '.cm-content': {
         caretColor: 'var(--color-caret)',
+        fontFamily: "var(--font-mono)"
     },
     '.cm-cursor, .cm-dropCursor': {
         borderLeftColor: 'var(--color-caret)',
@@ -35,7 +37,6 @@ const layout = EditorView.theme({
     },
     '.cm-line, .cm-line-message, .cm-gutterElement': {
         background: 'var(--color-line-background)',
-        backdropFilter: 'var(--line-filter)',
     },
     '.cm-gutters': {
         background: 'transparent',
@@ -45,11 +46,52 @@ const layout = EditorView.theme({
     '.cm-content > canvas': {
         display: 'block',
     },
-    '.cm-gutterElement.cm-image-block, .cm-image-name, .cm-image-name *': {
+    '.cm-gutterElement.cm-image-track, .cm-image-name, .cm-image-name *': {
         color: 'var(--color-image)',
     },
-    '.cm-gutterElement.cm-sound-block, .cm-sound-name, .cm-sound-name *': {
+    '.cm-gutterElement.cm-sound-track, .cm-sound-name, .cm-sound-name *': {
         color: 'var(--color-sound)',
+    },
+    '.cm-track-toggle, .cm-boolean-toggle': {
+        appearance: 'none',
+        margin: '0',
+        border: 'none',
+        borderRadius: '0',
+        background: 'transparent',
+        boxShadow: 'inset 0 0 0 2px var(--toggle-color)',
+        cursor: 'pointer',
+    },
+    '.cm-track-toggle:checked, .cm-boolean-toggle:checked': {
+        background: 'radial-gradient(circle closest-side, #fff 0 32%, transparent 36%) var(--toggle-color)',
+    },
+    '.cm-boolean-toggle': {
+        '--toggle-color': 'var(--color-syntax-bool)',
+        display: 'inline-block',
+        width: '0.8em',
+        height: '0.8em',
+        marginRight: '0.5ch',
+        verticalAlign: '-0.05em',
+    },
+    '.cm-lineNumbers .cm-gutterElement.cm-track-cell': {
+        padding: '0',
+    },
+    '.cm-track-toggle': {
+        '--toggle-color': 'var(--color-caret)',
+        display: 'block',
+        width: '100%',
+        height: '100%',
+    },
+    '.cm-line.cm-muted-track, .cm-line.cm-muted-track *': {
+        color: 'var(--color-gutter)',
+    },
+    '.cm-muted-track .cm-boolean-toggle': {
+        '--toggle-color': 'var(--color-gutter)',
+    },
+    '.cm-image-track .cm-track-toggle': {
+        '--toggle-color': 'var(--color-image)',
+    },
+    '.cm-sound-track .cm-track-toggle': {
+        '--toggle-color': 'var(--color-sound)',
     },
     '.cm-pattern-string, .cm-pattern-string *': {
         color: 'var(--color-syntax-pattern-string)',

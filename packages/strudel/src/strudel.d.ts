@@ -43,6 +43,7 @@ declare module '@strudel/core' {
         hits: (...lengths: ReadonlyArray<HitLength>) => Pattern<number>
         degradeBy: (amount: number | string | Pattern) => Pattern<Value>
         query: (state: State) => Array<Hap<Value>>
+        filterValues: (test: (value: Value) => boolean) => Pattern<Value>
         fmap: <Next>(transform: (value: Value) => Next) => Pattern<Next>
         queryArc: (begin: number, end: number) => Array<Hap<Value>>
     }
@@ -74,7 +75,7 @@ declare module '@strudel/core' {
     export const silence: Pattern
     export const pure: <Value>(value: Value) => Pattern<Value>
     export const signal: (getValue: (time: Fraction) => number) => Pattern<number>
-    export const register: (name: string, transform: ((pattern: Pattern<number>) => Pattern<number>) | ((argument: number, pattern: Pattern) => Pattern<number>)) => void
+    export const register: (name: string, transform: ((pattern: Pattern<number>) => Pattern<number>) | ((argument: never, pattern: Pattern) => Pattern)) => void
 }
 
 declare module '@strudel/mini' {

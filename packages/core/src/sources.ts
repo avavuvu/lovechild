@@ -60,7 +60,7 @@ for (const name of sourceNames) {
     }
 }
 
-export const previous = (block?: string) => new Image({ kind: 'previous', block })
+export const previous = (track?: string) => new Image({ kind: 'previous', track })
 
 export const camera = () => new Image({ kind: 'media', name: 'camera', source: '' })
 

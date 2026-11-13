@@ -1,7 +1,7 @@
 import { isImage, type Image, type Uniform } from '@lovechild/core'
 import { isPattern, pure, type Hap } from '@strudel/core'
 import { readColor } from './colors'
-import type { Block } from './names'
+import type { Track } from './names'
 import type { Location, WarningList } from './warnings'
 
 export interface ValueReader {
@@ -9,12 +9,12 @@ export interface ValueReader {
     updateValues: (time: number) => Array<Hap>
 }
 
-export const layerImages = (blocks: ReadonlyArray<Block>) => {
-    const images = blocks.filter(isImage)
+export const layerImages = (tracks: ReadonlyArray<Track>) => {
+    const images = tracks.filter(isImage)
     return images.length > 0 ? images.reduce((layered, next) => layered.screen(next)) : undefined
 }
 
-export const getNamedImages = (names: ReadonlyMap<string, Block>) => new Map(Array.from(names).filter((entry): entry is [string, Image] => isImage(entry[1])))
+export const getNamedImages = (names: ReadonlyMap<string, Track>) => new Map(Array.from(names).filter((entry): entry is [string, Image] => isImage(entry[1])))
 
 const fallbackColor: ReadonlyArray<number> = [0, 0, 0, 1]
 

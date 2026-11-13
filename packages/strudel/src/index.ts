@@ -1,5 +1,5 @@
 export { isTextStyle, type Graph, type Pass, type Uniform } from '@lovechild/core'
-export { getBlockName, previewNames, type MiniLocation } from './evaluate'
+export { getTrackName, previewNames, type MiniLocation } from './evaluate'
 export { expandMiniNotation } from './expand'
 export { isName } from './names'
 export { isImageFunction } from './images'

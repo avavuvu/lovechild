@@ -15,7 +15,7 @@ export interface Resources {
     declareUniforms: (step: Step | Select) => ReadonlyArray<Declared>
     getMedia: (operation: Media | Text) => number
     getBuffer: (feedback: Feedback) => number
-    getBlockLoop: (name: string) => Feedback
+    getTrackLoop: (name: string) => Feedback
 }
 
 const vectorTypes: Record<Shape, string> = { scalar: 'float', xy: 'vec2', rgb: 'vec3', rgba: 'vec4' }
@@ -103,11 +103,11 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
         return shader.declareVariable('vec4', `vec4(${red}.r, ${green}.g, ${blue}.b, ${green}.a)`)
     }
 
-    const emitPrevious = (block: string | undefined, coordinate: string, scope: Scope) => {
-        const loop = block === undefined ? scope : resources.getBlockLoop(block)
+    const emitPrevious = (track: string | undefined, coordinate: string, scope: Scope) => {
+        const loop = track === undefined ? scope : resources.getTrackLoop(track)
 
         if (loop === undefined) {
-            throw new Error('previous() must be inside a block')
+            throw new Error('previous() must be inside a track')
         }
 
         return shader.sampleBuffer(resources.getBuffer(loop), 'previous', coordinate)
@@ -162,7 +162,7 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
                 return shader.declareVariable('vec4', `paintText(${mask}, ${fill}, ${stroke})`)
             }
             case 'previous': {
-                return emitPrevious(operation.block, coordinate, scope)
+                return emitPrevious(operation.track, coordinate, scope)
             }
             case 'feedback': {
                 return emitFeedback(operation, coordinate)

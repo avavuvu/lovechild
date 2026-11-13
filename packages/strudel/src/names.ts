@@ -1,13 +1,13 @@
 import { isImage, previous, type Image } from '@lovechild/core'
 import type { Pattern } from '@strudel/core'
 
-export type Block = Image | Pattern
+export type Track = Image | Pattern
 
 export const isName = (key: string) => key.length > 1 && key.startsWith('$')
 
-export const createNames = (inputs: ReadonlyMap<string, Block>) => {
-    const blocks = new Map<string, Block>()
-    const blockNames = new WeakMap<object, string>()
+export const createNames = (inputs: ReadonlyMap<string, Track>) => {
+    const tracks = new Map<string, Track>()
+    const trackNames = new WeakMap<object, string>()
     const laterNames = new Map<string, object>()
 
     const getLaterName = (name: string) => {
@@ -23,7 +23,7 @@ export const createNames = (inputs: ReadonlyMap<string, Block>) => {
             },
         })
 
-        blockNames.set(later, name)
+        trackNames.set(later, name)
         laterNames.set(name, later)
         return later
     }
@@ -35,31 +35,31 @@ export const createNames = (inputs: ReadonlyMap<string, Block>) => {
                 return undefined
             }
 
-            return blocks.get(key) ?? inputs.get(key) ?? getLaterName(key)
+            return tracks.get(key) ?? inputs.get(key) ?? getLaterName(key)
         },
     })
 
-    const defineName = (name: string, block: Block) => {
-        blocks.set(name, block)
+    const defineName = (name: string, track: Track) => {
+        tracks.set(name, track)
 
-        if (isImage(block)) {
-            blockNames.set(block, name)
+        if (isImage(track)) {
+            trackNames.set(track, name)
         }
     }
 
-    const readPrevious = (block?: object) => {
-        if (block === undefined) {
+    const readPrevious = (track?: object) => {
+        if (track === undefined) {
             return previous()
         }
 
-        const name = blockNames.get(block)
+        const name = trackNames.get(track)
 
         if (name === undefined) {
-            throw new Error('previous() takes a named block')
+            throw new Error('previous() takes a named track')
         }
 
         return previous(name)
     }
 
-    return { blocks, lookup, defineName, readPrevious }
+    return { tracks, lookup, defineName, readPrevious }
 }

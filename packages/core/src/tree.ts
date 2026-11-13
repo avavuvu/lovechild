@@ -35,7 +35,7 @@ export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
 
 export const hasFreePrevious = (operation: Operation): boolean => {
     if (operation.kind === 'previous') {
-        return operation.block === undefined
+        return operation.track === undefined
     }
 
     if (operation.kind === 'feedback') {
@@ -51,7 +51,7 @@ export const closeLoop = (image: Image) => {
 
 const usesPrevious = (operation: Operation): boolean => operation.kind === 'previous' || getChildren(operation).some(usesPrevious)
 
-const canShowImage = (operation: Operation, blocks: ReadonlyMap<string, Image>, visiting: ReadonlySet<string>): boolean => {
+const canShowImage = (operation: Operation, tracks: ReadonlyMap<string, Image>, visiting: ReadonlySet<string>): boolean => {
     switch (operation.kind) {
         case 'source': {
             return operation.name !== 'empty'
@@ -62,24 +62,24 @@ const canShowImage = (operation: Operation, blocks: ReadonlyMap<string, Image>, 
             return true
         }
         case 'previous': {
-            const block = operation.block === undefined || visiting.has(operation.block) ? undefined : blocks.get(operation.block)
-            return block !== undefined && canShowImage(block.operation, blocks, new Set([...visiting, operation.block ?? '']))
+            const track = operation.track === undefined || visiting.has(operation.track) ? undefined : tracks.get(operation.track)
+            return track !== undefined && canShowImage(track.operation, tracks, new Set([...visiting, operation.track ?? '']))
         }
         case 'combine': {
-            return canShowImage(operation.input, blocks, visiting) || canShowImage(operation.other, blocks, visiting)
+            return canShowImage(operation.input, tracks, visiting) || canShowImage(operation.other, tracks, visiting)
         }
         case 'select': {
-            return operation.options.some((option) => canShowImage(option, blocks, visiting))
+            return operation.options.some((option) => canShowImage(option, tracks, visiting))
         }
         case 'coordinate':
         case 'split':
         case 'swizzle':
         case 'feedback': {
-            return canShowImage(operation.input, blocks, visiting)
+            return canShowImage(operation.input, tracks, visiting)
         }
     }
 }
 
-export const isEmptyLoop = (image: Image, blocks: ReadonlyMap<string, Image>, name?: string) => {
-    return usesPrevious(image.operation) && !canShowImage(image.operation, blocks, new Set(name === undefined ? [] : [name]))
+export const isEmptyLoop = (image: Image, tracks: ReadonlyMap<string, Image>, name?: string) => {
+    return usesPrevious(image.operation) && !canShowImage(image.operation, tracks, new Set(name === undefined ? [] : [name]))
 }

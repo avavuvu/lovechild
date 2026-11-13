@@ -36,19 +36,31 @@ export const indexName = 'index'
 
 export const strudelPrefix = 'strudel:'
 
+export const conceptCategory = 'concept'
+
 export const lovechildCategories = ['source', 'media', 'text', 'coordinate', 'color', 'combine', 'split', 'other']
 
 export const neutralCategories = ['temporal', 'stepwise', 'combiners', 'functional', 'math', 'generators']
 
 export const getKind = (namespace: Namespace, category: string): Kind => {
+    if (category === conceptCategory) {
+        return 'neutral'
+    }
+
     if (namespace === 'strudel') {
         return neutralCategories.includes(category) ? 'neutral' : 'sound'
+    }
+
+    if (category === 'sound') {
+        return 'sound'
     }
 
     return category === 'text' ? 'text' : 'image'
 }
 
 export const getEntryKind = (entry: Entry) => getKind(entry.namespace, entry.categories[0])
+
+export const isConcept = (entry: Entry) => entry.categories[0] === conceptCategory
 
 export const getHref = (namespace: Namespace, name: string) => {
     if (namespace === 'strudel') {

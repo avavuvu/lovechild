@@ -40,6 +40,40 @@
         contain: content;
     }
 
+    article > :global(:is(p, ul, ol, h2, h3, blockquote)) {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 1.2em;
+        line-height: 1.35;
+    }
+
+    article :global(h2) {
+        font-size: 1.15em;
+        font-weight: bold;
+    }
+
+    article :global(h3) {
+        font-weight: bold;
+    }
+
+    article > :global(:is(h2, h3) + *) {
+        margin-block-start: calc(var(--gap) / 2);
+    }
+
+    article :global(:not(pre) > code) {
+        padding: 0 0.4ch;
+        background: color-mix(in srgb, var(--color-muted) 22%, transparent);
+    }
+
+    article :global(:is(h2, h3) code) {
+        padding: 0;
+        background: none;
+    }
+
+    article :global(ul) {
+        padding-inline-start: 2ch;
+        list-style: '- ';
+    }
+
     .other {
         text-align: right;
     }

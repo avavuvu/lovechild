@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getEntryKind, type Entry } from './reference'
+    import { getEntryKind, isConcept, type Entry } from './reference'
     import Try from './Try.svelte'
 
     let { entry, heading = 'h2', isPlayable = false, isLinked = false }: {
@@ -19,7 +19,7 @@
                 <a class="name" href={entry.href}>{entry.label}</a>
             {:else}
                 <span class="name">{entry.label}</span>
-            {/if}<span class="punctuation">(</span>{#each entry.parameters as parameter, index (index)}{#if index > 0}<span class="punctuation">{', '}</span>{/if}<span class="parameter">{parameter.name}</span>{/each}<span class="punctuation">)</span>
+            {/if}{#if !isConcept(entry)}<span class="punctuation">(</span>{#each entry.parameters as parameter, index (index)}{#if index > 0}<span class="punctuation">{', '}</span>{/if}<span class="parameter">{parameter.name}</span>{/each}<span class="punctuation">)</span>{/if}
         </svelte:element>
     </hgroup>
     {#if entry.parameters.length > 0}

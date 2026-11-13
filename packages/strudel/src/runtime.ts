@@ -10,11 +10,13 @@ import * as webaudio from '@strudel/webaudio'
 import { aliasBank, getAudioContext, initAudio, registerSynthSounds, samples, webaudioOutput } from '@strudel/webaudio'
 import './curves'
 import './selections'
-import { evaluateCode, type MiniLocation, type Preview } from './evaluate'
+import { evaluateCode, type MiniLocation, type Peek, type Preview } from './evaluate'
 import { imageFunctions } from './images'
-import type { Block } from './names'
+import type { Track } from './names'
 import './events'
+import './sounds'
 import { createMediaElement, releaseMediaElement } from './media'
+import { createPeekView, type PeekView } from './peeks'
 import { createTextLayer, type TextLayer } from './text'
 import { createValueReader, getNamedImages, layerImages, type ValueReader } from './visuals'
 import { createWarningList, type Location, type Warning, type WarningList } from './warnings'
@@ -119,6 +121,9 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
 
     const scheduler = new Cyclist({ getTime, onTrigger: playHap, onError: reportError })
     const previewElements = new Map<string, HTMLElement>()
+    const peekViews = new Map<string, PeekView>()
+    let peeks: ReadonlyArray<Peek> = []
+    let peekTime = 0
     const mediaElements = new Map<string, MediaElement>()
     let sound: Pattern = silence
     let visual: Visual | undefined
@@ -165,6 +170,31 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         return element
     }
 
+    const getPeekView = (id: string) => {
+        const existing = peekViews.get(id)
+
+        if (existing) {
+            return existing
+        }
+
+        const view = createPeekView()
+        peekViews.set(id, view)
+        return view
+    }
+
+    const updatePeeks = (time: number) => {
+        const from = Math.min(peekTime, time)
+        peekTime = time
+
+        for (const { id, pattern } of peeks) {
+            try {
+                getPeekView(id).update(pattern, from, time)
+            } catch (error) {
+                reportError(error)
+            }
+        }
+    }
+
     const getMediaElement = (input: MediaInput) => {
         const existing = mediaElements.get(input.key)
 
@@ -189,8 +219,8 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         }
     }
 
-    const createGraph = (blocks: ReadonlyArray<Block>, previews: ReadonlyArray<Preview>, names: ReadonlyMap<string, Block>) => {
-        const image = layerImages(blocks)
+    const createGraph = (tracks: ReadonlyArray<Track>, previews: ReadonlyArray<Preview>, names: ReadonlyMap<string, Track>) => {
+        const image = layerImages(tracks)
 
         if (image === undefined && previews.length === 0) {
             return undefined
@@ -235,6 +265,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
             renderer.draw(shown.graph, shown.reader.values, time, shown.previews, shown.media)
         }
 
+        updatePeeks(time)
         options.onFrame(time, haps)
     }
 
@@ -245,17 +276,18 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
             cleanupDraw(true)
             reportedErrors.clear()
 
-            const { blocks, names, previews, miniLocations, widgets, transpiled, reports } = await evaluateCode(code, scope)
+            const { tracks, names, previews, peeks: evaluatedPeeks, miniLocations, widgets, transpiled, reports } = await evaluateCode(code, scope)
             const warnings = createWarningList(code, options.onWarning)
 
             for (const { details, place } of reports) {
                 warnings.add(details, place)
             }
 
-            const graph = createGraph(blocks, previews, names)
-            const sounds = blocks.filter(isPattern)
+            const graph = createGraph(tracks, previews, names)
+            const sounds = tracks.filter(isPattern)
 
             visual = graph && createVisual(graph, previews, warnings)
+            peeks = evaluatedPeeks
             releaseUnusedMedia(graph?.media ?? [])
             sound = sounds.length > 0 ? guardPattern(stack(...sounds)) : silence
             await scheduler.setPattern(sound)
@@ -271,7 +303,10 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
             return {
                 miniLocations,
                 widgets,
-                previews: previews.map((preview) => ({ id: preview.id, element: getPreviewElement(preview.id) })),
+                previews: [
+                    ...previews.map((preview) => ({ id: preview.id, element: getPreviewElement(preview.id) })),
+                    ...evaluatedPeeks.map((peek) => ({ id: peek.id, element: getPeekView(peek.id).element })),
+                ],
                 transpiled,
                 graph,
             }
