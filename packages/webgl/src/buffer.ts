@@ -3,9 +3,16 @@ export interface FeedbackBuffer {
     framebuffers: ReadonlyArray<WebGLFramebuffer>
 }
 
+const hasFloatColor = (gl: WebGL2RenderingContext) => gl.getExtension('EXT_color_buffer_float') !== null
+
 const allocateTexture = (gl: WebGL2RenderingContext, texture: WebGLTexture, width: number, height: number) => {
     gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+
+    if (hasFloatColor(gl)) {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, width, height, 0, gl.RGBA, gl.HALF_FLOAT, null)
+    } else {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+    }
 }
 
 const createTexture = (gl: WebGL2RenderingContext, width: number, height: number) => {

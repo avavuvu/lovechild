@@ -1,7 +1,7 @@
 import { generateGraph, type Graph, type MediaInput } from '@lovechild/core'
 import { createRenderer, type CompiledGraph, type MediaElement } from '@lovechild/webgl'
 import * as strudel from '@strudel/core'
-import { Cyclist, Hap, isPattern, Pattern, setTime, silence, stack, type State } from '@strudel/core'
+import { Cyclist, Hap, isPattern, Pattern, setClockTime, setTime, silence, stack, type State } from '@strudel/core'
 import { cleanupDraw } from '@strudel/draw'
 import * as mini from '@strudel/mini'
 import * as tonal from '@strudel/tonal'
@@ -111,15 +111,19 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
 
     const getTime = () => isMuted ? performance.now() / 1000 : audioContext.currentTime + audioOffset
 
-    const playHap = (...values: Parameters<typeof webaudioOutput>) => {
-        const [hap, deadline, duration, cps, time] = values
+    const playHap = (hap: Hap, time: number, cps: number) => {
+        const { onSchedule, dominantSchedule, locations } = hap.context
 
-        if (!isMuted) {
-            webaudioOutput(hap, deadline, duration, cps, time - audioOffset).catch((error) => reportError(error, hap.context.locations))
+        if (!isMuted && !(onSchedule && dominantSchedule)) {
+            webaudioOutput(hap, time - audioOffset, cps).catch((error) => reportError(error, locations))
+        }
+
+        if (onSchedule) {
+            Promise.resolve(onSchedule(hap, time, cps)).catch((error) => reportError(error, locations))
         }
     }
 
-    const scheduler = new Cyclist({ getTime, onTrigger: playHap, onError: reportError })
+    const scheduler = new Cyclist({ getTime, onSchedule: playHap, onError: reportError })
     const previewElements = new Map<string, HTMLElement>()
     const peekViews = new Map<string, PeekView>()
     let peeks: ReadonlyArray<Peek> = []
@@ -130,6 +134,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
     let frame = 0
 
     setTime(() => scheduler.now())
+    setClockTime(getTime)
     document.addEventListener(logEvent, readLog)
     registerSynthSounds()
     samples('github:tidalcycles/dirt-samples')

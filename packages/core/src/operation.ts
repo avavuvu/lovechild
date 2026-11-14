@@ -35,7 +35,7 @@ export type SplitName = keyof typeof splits
 
 export type OperationName = SourceName | CoordinateName | ColorName | CombineName | SplitName
 
-export type MediaName = 'camera' | 'video' | 'image'
+export type MediaName = 'camera' | 'video' | 'picture'
 
 export interface TextSettings {
     content: Value

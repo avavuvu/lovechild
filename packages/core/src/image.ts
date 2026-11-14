@@ -1,7 +1,9 @@
-import type { Amount, ColorName, CombineName, CoordinateName, Keyword, Operation, Parameter } from './operation'
+import type { Amount, ColorName, CombineName, CoordinateName, Keyword, Operation, Parameter, Scalar } from './operation'
 import { colorNames, combineNames, coordinateNames, createArguments, splitNames } from './steps'
 
 type Values = ReadonlyArray<Parameter | undefined>
+
+const isScalar = (value: unknown): value is Scalar => typeof value === 'number' || (typeof value === 'object' && value !== null && 'queryArc' in value)
 
 export class Image {
     readonly operation: Operation
@@ -56,6 +58,10 @@ export class Image {
 
     kaleid(sides?: Amount) {
         return this.#transformCoordinate('kaleid', [sides])
+    }
+
+    polar() {
+        return this.#transformCoordinate('polar', [])
     }
 
     pixelate(x?: Amount, y?: Amount) {
@@ -122,6 +128,18 @@ export class Image {
         return this.#transformColor('posterize', [levels])
     }
 
+    abs() {
+        return this.#transformColor('abs', [])
+    }
+
+    fract() {
+        return this.#transformColor('fract', [])
+    }
+
+    smoothstep(start?: Amount, end?: Amount) {
+        return this.#transformColor('smoothstep', [start, end])
+    }
+
     thresh(threshold?: Amount) {
         return this.#transformColor('thresh', [threshold])
     }
@@ -154,24 +172,48 @@ export class Image {
         return this.split(0, amount)
     }
 
-    add(other: Image) {
-        return this.#combineWith('add', other, [])
+    add(other: Image | Scalar) {
+        return this.#combineWith('add', this.#fillWith(other, 0), [])
     }
 
-    sub(other: Image) {
-        return this.#combineWith('sub', other, [])
+    sub(other: Image | Scalar) {
+        return this.#combineWith('sub', this.#fillWith(other, 0), [])
     }
 
-    subtract(other: Image) {
+    subtract(other: Image | Scalar) {
         return this.sub(other)
     }
 
-    mult(other: Image) {
-        return this.#combineWith('mult', other, [])
+    mult(other: Image | Scalar) {
+        return this.#combineWith('mult', this.#fillWith(other, 1), [])
     }
 
-    multiply(other: Image) {
+    multiply(other: Image | Scalar) {
         return this.mult(other)
+    }
+
+    div(other: Image | Scalar) {
+        return this.#combineWith('div', this.#fillWith(other, 1), [])
+    }
+
+    divide(other: Image | Scalar) {
+        return this.div(other)
+    }
+
+    min(other: Image | Scalar) {
+        return this.#combineWith('min', this.#fillWith(other, 1), [])
+    }
+
+    max(other: Image | Scalar) {
+        return this.#combineWith('max', this.#fillWith(other, 0), [])
+    }
+
+    pow(other: Image | Scalar) {
+        return this.#combineWith('pow', this.#fillWith(other, 1), [])
+    }
+
+    mod(other: Image | Scalar) {
+        return this.#combineWith('mod', this.#fillWith(other, 1), [])
     }
 
     diff(other: Image) {
@@ -225,6 +267,14 @@ export class Image {
 
     #transformColor(name: ColorName, values: Values) {
         return new Image({ kind: 'color', name, input: this.operation, parameters: createArguments(name, values) })
+    }
+
+    #fillWith(value: Image | Scalar, alpha: number) {
+        if (!isScalar(value)) {
+            return value
+        }
+
+        return new Image({ kind: 'source', name: 'solid', parameters: createArguments('solid', [value, value, value, alpha]) })
     }
 
     #combineWith(name: CombineName, other: Image, values: Values) {

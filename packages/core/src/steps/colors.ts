@@ -113,6 +113,33 @@ vec4 posterize(vec4 color, float levels) {
     return vec4(pow(adjusted, vec3(1.0 / gamma)), color.a);
 }`,
     },
+    abs: {
+        parameters: [],
+        shapes: [],
+        functionName: 'absStep',
+        glsl: `
+vec4 absStep(vec4 color) {
+    return vec4(abs(color.rgb), color.a);
+}`,
+    },
+    fract: {
+        parameters: [],
+        shapes: [],
+        functionName: 'fractStep',
+        glsl: `
+vec4 fractStep(vec4 color) {
+    return vec4(fract(color.rgb), color.a);
+}`,
+    },
+    smoothstep: {
+        parameters: [{ name: 'start', default: 0 }, { name: 'end', default: 1 }],
+        shapes: ['scalar', 'scalar'],
+        functionName: 'smoothstepStep',
+        glsl: `
+vec4 smoothstepStep(vec4 color, float start, float end) {
+    return vec4(smoothstep(start, end, color.rgb), color.a);
+}`,
+    },
     thresh: {
         parameters: [{ name: 'threshold', default: 0.5 }],
         shapes: ['scalar'],

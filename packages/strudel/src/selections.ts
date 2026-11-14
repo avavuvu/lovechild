@@ -1,5 +1,6 @@
 import { Image, isImage, selectImage } from '@lovechild/core'
-import { pure, stack, type Pattern, type PatternTransform, type SelectionName } from '@strudel/core'
+import { isPattern, pure, reify, stack, type Pattern, type PatternTransform, type SelectionName } from '@strudel/core'
+import { fillGaps } from './events'
 
 type Transform = (image: Image) => Image
 
@@ -26,9 +27,20 @@ const selectionNames: ReadonlyArray<SelectionName> = [
     'chunkBack',
 ]
 
+const conditionNames: ReadonlyArray<SelectionName> = ['when', 'sometimesBy', 'someCyclesBy']
+
 const isTransform = (value: SelectionValue): value is Transform => typeof value === 'function'
 
 const markApplied: PatternTransform = (pattern) => pattern.fmap(() => 1)
+
+const readArgument = (name: SelectionName, value: SelectionValue) => {
+    if (isTransform(value)) {
+        return markApplied
+    }
+
+    const isCondition = conditionNames.includes(name) && (isPattern(value) || typeof value === 'string')
+    return isCondition ? fillGaps(reify(value)) : value
+}
 
 const applySelection = (name: SelectionName, image: Image, values: ReadonlyArray<SelectionValue>) => {
     const transform = values.find(isTransform)
@@ -43,7 +55,7 @@ const applySelection = (name: SelectionName, image: Image, values: ReadonlyArray
         throw new Error(`${name} must return an image`)
     }
 
-    const selector = pure(0)[name](...values.map((value) => isTransform(value) ? markApplied : value))
+    const selector = pure(0)[name](...values.map((value) => readArgument(name, value)))
     return selectImage(selector, [image, transformed])
 }
 

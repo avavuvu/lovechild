@@ -3,8 +3,22 @@
     "private": true,
     "type": "module",
     "license": "AGPL-3.0-or-later",
-    "workspaces": ["packages/*", "apps/*"],
+    "workspaces": [
+        "packages/*",
+        "apps/*",
+        ".strudel/packages/core",
+        ".strudel/packages/mini",
+        ".strudel/packages/tonal",
+        ".strudel/packages/transpiler",
+        ".strudel/packages/webaudio",
+        ".strudel/packages/draw",
+        ".strudel/packages/codemirror",
+        ".strudel/packages/superdough",
+        ".strudel/packages/vite-plugin-bundle-audioworklet"
+    ],
     "scripts": {
+        "strudel": "bun scripts/strudel.ts",
+        "setup": "bun run strudel && bun install",
         "dev": "bun --filter @lovechild/editor dev",
         "build": "bun --filter @lovechild/editor build",
         "check": "tsc -p packages/core && tsc -p packages/webgl && tsc -p packages/strudel && bun --filter @lovechild/editor check"

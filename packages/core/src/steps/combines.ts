@@ -25,6 +25,50 @@ vec4 mult(vec4 color, vec4 other) {
     return color * other;
 }`,
     },
+    div: {
+        parameters: [],
+        shapes: [],
+        glsl: `
+vec4 div(vec4 color, vec4 other) {
+    return color / other;
+}`,
+    },
+    min: {
+        parameters: [],
+        shapes: [],
+        functionName: 'minStep',
+        glsl: `
+vec4 minStep(vec4 color, vec4 other) {
+    return min(color, other);
+}`,
+    },
+    max: {
+        parameters: [],
+        shapes: [],
+        functionName: 'maxStep',
+        glsl: `
+vec4 maxStep(vec4 color, vec4 other) {
+    return max(color, other);
+}`,
+    },
+    pow: {
+        parameters: [],
+        shapes: [],
+        functionName: 'powStep',
+        glsl: `
+vec4 powStep(vec4 color, vec4 other) {
+    return pow(max(color, 0.0), other);
+}`,
+    },
+    mod: {
+        parameters: [],
+        shapes: [],
+        functionName: 'modStep',
+        glsl: `
+vec4 modStep(vec4 color, vec4 other) {
+    return vec4(mod(color.rgb, other.rgb), color.a);
+}`,
+    },
     diff: {
         parameters: [],
         shapes: [],

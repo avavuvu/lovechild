@@ -66,4 +66,4 @@ export const camera = () => new Image({ kind: 'media', name: 'camera', source: '
 
 export const video = (source: string) => new Image({ kind: 'media', name: 'video', source })
 
-export const image = (source: string) => new Image({ kind: 'media', name: 'image', source })
+export const picture = (source: string) => new Image({ kind: 'media', name: 'picture', source })

@@ -24,6 +24,11 @@ const findGaps = (span: TimeSpan, events: ReadonlyArray<Hap>): Array<Hap<number>
     return gaps
 }
 
+export const fillGaps = <Value>(pattern: Pattern<Value>) => new Pattern<Value | number>((state) => {
+    const events = pattern.query(state)
+    return [...events, ...findGaps(state.span, events)]
+})
+
 const markHits = (pattern: Pattern) => new Pattern<number>((state) => {
     const events = pattern.query(state).filter((hap) => hap.whole !== undefined)
     const marked = events.map((hap) => new Hap(hap.whole, hap.part, 1, hap.context))

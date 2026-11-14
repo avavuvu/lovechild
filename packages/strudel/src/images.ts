@@ -1,4 +1,4 @@
-import { camera, Image, image, imageMethodNames, sourceFunctions, text, TextImage, textStyleNames, video } from '@lovechild/core'
+import { camera, Image, imageMethodNames, picture, sourceFunctions, text, TextImage, textStyleNames, video } from '@lovechild/core'
 import { isPattern, type Pattern } from '@strudel/core'
 import { checkFunctions, checkMethods } from './warnings'
 
@@ -8,7 +8,7 @@ export const imageFunctions = checkFunctions({
     ...sourceFunctions,
     camera,
     video: (source: string | Pattern<string>) => video(readSource(source)),
-    image: (source: string | Pattern<string>) => image(readSource(source)),
+    picture: (source: string | Pattern<string>) => picture(readSource(source)),
     text,
 })
 

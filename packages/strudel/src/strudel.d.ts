@@ -21,6 +21,8 @@ declare module '@strudel/core' {
 
     export interface HapContext {
         locations?: ReadonlyArray<{ start: number, end: number }>
+        onSchedule?: Schedule
+        dominantSchedule?: boolean
     }
 
     export class Hap<Value = unknown> {
@@ -53,14 +55,14 @@ declare module '@strudel/core' {
         new <Value>(query: (state: State) => Array<Hap<Value>>): Pattern<Value>
     }
 
-    export type Trigger = (hap: Hap, deadline: number, duration: number, cps: number, time: number) => void
+    export type Schedule = (hap: Hap, time: number, cps: number) => void | Promise<void>
 
     export class Cyclist {
         readonly started: boolean
         readonly cps: number
         readonly latency: number
         readonly clock: { duration: number }
-        constructor(options: { getTime: () => number, onTrigger: Trigger, onError?: (error: unknown) => void })
+        constructor(options: { getTime: () => number, onSchedule: Schedule, onError?: (error: unknown) => void })
         now(): number
         setCps(cps: number): void
         setPattern(pattern: Pattern): Promise<void>
@@ -69,6 +71,7 @@ declare module '@strudel/core' {
     }
 
     export const setTime: (getTime: () => number) => void
+    export const setClockTime: (getClockTime: () => number) => void
     export const isPattern: (value: unknown) => value is Pattern
     export const reify: <Value>(value: Value | Pattern<Value>) => Pattern<Value>
     export const stack: (...patterns: Array<Pattern>) => Pattern
@@ -119,9 +122,9 @@ declare module '@strudel/tonal' {
 }
 
 declare module '@strudel/webaudio' {
-    import type { Trigger } from '@strudel/core'
+    import type { Hap } from '@strudel/core'
 
-    export const webaudioOutput: (...values: Parameters<Trigger>) => Promise<void>
+    export const webaudioOutput: (hap: Hap, time: number, cps: number) => Promise<void>
     export const getAudioContext: () => AudioContext
     export const initAudio: () => Promise<void>
     export const registerSynthSounds: () => void
@@ -141,5 +144,5 @@ declare module '@strudel/transpiler' {
     }
 
     export const registerWidgetType: (type: string) => void
-    export const transpiler: (input: string, options: { wrapAsync: true }) => { output: string, miniLocations: Array<[number, number]>, widgets: Array<Widget> }
+    export const transpiler: (input: string, options: { wrapAsync: true }) => { output: string, miniLocations?: Array<[number, number]>, widgets?: Array<Widget> }
 }

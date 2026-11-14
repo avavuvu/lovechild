@@ -2,7 +2,7 @@ import type { Image } from '../image'
 import type { Feedback, Media, Operation, Select, Step, Text } from '../operation'
 import { createCache } from './cache'
 import type { Pass, Target } from './graph'
-import { definitions, type Shape } from '../steps'
+import { definitions, getFunctionName, type Shape } from '../steps'
 import { baseCoordinate, createShader } from './shader'
 
 type Scope = Feedback | undefined
@@ -77,7 +77,7 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
 
     const callFunction = (step: Step, values: ReadonlyArray<string>, coordinate: string, scope: Scope) => {
         shader.useFunction(step.name)
-        return `${step.name}(${[...values, ...emitParameters(step, coordinate, scope)].join(', ')})`
+        return `${getFunctionName(step.name)}(${[...values, ...emitParameters(step, coordinate, scope)].join(', ')})`
     }
 
     const emitSelect = (operation: Select, coordinate: string, scope: Scope) => {

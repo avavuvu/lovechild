@@ -20,7 +20,7 @@ const readSignature = (name: string, glsl: string) => {
 export const checkSignatures = (kind: StepKind, group: Record<string, Definition>) => {
     for (const [name, definition] of Object.entries(group)) {
         const expected = [...inputTypes[kind], ...definition.shapes.map((shape) => shapeTypes[shape])]
-        const actual = readSignature(name, definition.glsl)
+        const actual = readSignature(definition.functionName ?? name, definition.glsl)
         const size = definition.shapes.reduce((total, shape) => total + shapeSizes[shape], 0)
 
         if (definition.parameters.length !== size) {

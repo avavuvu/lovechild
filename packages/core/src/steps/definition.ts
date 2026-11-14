@@ -17,5 +17,6 @@ export interface Definition {
     encode?: (value: unknown) => number
     hasColorChannels?: boolean
     isInternal?: boolean
+    functionName?: string
     glsl: string
 }

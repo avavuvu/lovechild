@@ -64,7 +64,7 @@ const checkLoops = (registered: ReadonlyArray<Registered>) => {
 }
 
 export const evaluateCode = async (code: string, scope: Record<string, unknown>, inputs: ReadonlyMap<string, Track> = new Map()): Promise<Evaluation> => {
-    const { output, miniLocations, widgets } = transpiler(separateStatements(quoteTrackNames(code)), { wrapAsync: true })
+    const { output, miniLocations = [], widgets = [] } = transpiler(separateStatements(quoteTrackNames(code)), { wrapAsync: true })
     const names = createNames(inputs)
     const tracks = new Map<string, Track>()
     const previews: Array<Preview> = []

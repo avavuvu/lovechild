@@ -57,6 +57,15 @@ vec2 kaleid(vec2 coordinate, float sides) {
     return length(point) * vec2(cos(angle), sin(angle)) + 0.5;
 }`,
     },
+    polar: {
+        parameters: [],
+        shapes: [],
+        glsl: `
+vec2 polar(vec2 coordinate) {
+    vec2 point = coordinate - 0.5;
+    return vec2(atan(point.y, point.x) / TAU + 0.5, length(point));
+}`,
+    },
     pixelate: {
         parameters: [{ name: 'x', default: 20 }, { name: 'y' }],
         shapes: ['xy'],

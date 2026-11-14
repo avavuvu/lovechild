@@ -20,7 +20,7 @@ export const createMediaElement = (input: MediaInput): MediaElement => {
         case 'text': {
             return document.createElement('canvas')
         }
-        case 'image': {
+        case 'picture': {
             const element = new Image()
             element.crossOrigin = 'anonymous'
             element.src = input.source

@@ -29,6 +29,8 @@ checkSignatures('color', colors)
 checkSignatures('combine', combines)
 checkSignatures('split', splits)
 
+export const getFunctionName = (name: OperationName) => definitions[name].functionName ?? name
+
 const isDefined = (value: Parameter | undefined): value is Parameter => value !== undefined
 
 export const createArguments = (name: OperationName, values: ReadonlyArray<Parameter | undefined>): ReadonlyArray<Argument> => {
