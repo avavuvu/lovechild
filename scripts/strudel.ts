@@ -70,5 +70,6 @@ if (!isCurrent()) {
     runGit('sparse-checkout', 'set', '--no-cone', ...sparsePatterns)
     runGit('checkout', '--quiet', 'FETCH_HEAD')
     resolveCatalogs()
+    rmSync(join(folder, '.git'), { recursive: true, force: true })
     writeFileSync(marker, commit)
 }

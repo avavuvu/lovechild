@@ -1,6 +1,3 @@
 [build]
   command = "bun run build"
-  publish = "dist"
-
-[[plugins]]
-  package = "./plugins/strudel-setup"
+  publish = "apps/editor/dist"
