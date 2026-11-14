@@ -5,6 +5,7 @@ import { getContext, setContext } from 'svelte'
 export interface Example {
     id: symbol
     code: string
+    isAutomatic?: boolean
     onFrame: (time: number, haps: ReadonlyArray<Hap>) => void
     showWarning?: (warning: Warning) => void
     showError?: (error: unknown, locations: ReadonlyArray<Location>) => void

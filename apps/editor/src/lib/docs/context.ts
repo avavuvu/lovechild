@@ -1,7 +1,8 @@
 import { getContext, setContext } from 'svelte'
+import type { Links } from './reference'
 
 export interface DocsContext {
-    readonly links: Record<string, string>
+    readonly links: Links
     readonly isPlayable: boolean
 }
 

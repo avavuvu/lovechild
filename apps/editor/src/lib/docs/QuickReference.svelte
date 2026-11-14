@@ -2,8 +2,8 @@
     import { onMount } from 'svelte'
     import { setDocsContext } from './context'
     import { findMarkdown } from './pages'
-    import ReferenceEntry from './ReferenceEntry.svelte'
-    import { getEntryKey, getKind, lovechildCategories, neutralCategories, type Entry, type Kind, type Namespace, type ReferenceData } from './reference'
+    import ReferenceEntry from './entry/ReferenceEntry.svelte'
+    import { getCategoryKey, getEntryKey, getKind, lovechildCategories, neutralCategories, type Entry, type Kind, type Links, type ReferenceData } from './reference'
 
     interface Group {
         key: string
@@ -17,12 +17,10 @@
     const categoryOrder = [...lovechildCategories, ...neutralCategories]
 
     let entries: ReadonlyArray<Entry> = $state.raw([])
-    let links: Record<string, string> = $state.raw({})
+    let links: Links = $state.raw({})
     let search = $state('')
     let selectedKey: string | undefined = $state()
     let openCategories: Record<string, boolean> = $state({})
-
-    const getCategoryKey = (namespace: Namespace, category: string) => `${namespace}:${category}`
 
     const findRank = (category: string) => {
         const index = categoryOrder.indexOf(category)
@@ -34,12 +32,12 @@
         || first.category.localeCompare(second.category)
 
     const createGroups = (found: ReadonlyArray<Entry>) => {
-        const pairs = found.flatMap((entry) => entry.categories.map((category) => ({ entry, category, key: getCategoryKey(entry.namespace, category) })))
+        const pairs = found.flatMap((entry) => entry.categories.map((category) => ({ entry, category, key: getCategoryKey(category) })))
 
         return Array.from(new Set(pairs.map((pair) => pair.key)), (key): Group => {
             const members = pairs.filter((pair) => pair.key === key)
-            const { entry, category } = members[0]
-            return { key, category, kind: getKind(entry.namespace, category), entries: members.map((member) => member.entry) }
+            const { category } = members[0]
+            return { key, category, kind: getKind(category), entries: members.map((member) => member.entry) }
         }).sort(compareGroups)
     }
 
@@ -86,12 +84,13 @@
             {/each}
         </div>
     </div>
-    <div class="entry">
+    <div class="entry prose flow">
         {#if currentEntry}
-            <ReferenceEntry entry={currentEntry} heading="h3" isLinked />
-        {/if}
-        {#if currentMarkdown}
-            <currentMarkdown.component />
+            <ReferenceEntry entry={currentEntry} heading="h3" isLinked>
+                {#if currentMarkdown}
+                    <currentMarkdown.component />
+                {/if}
+            </ReferenceEntry>
         {/if}
     </div>
 </div>

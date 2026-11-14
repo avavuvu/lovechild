@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount } from 'svelte'
-    import type { Editor } from '../editor/editor'
-    import { getExamplePlayer } from '../player'
-    import { getDocsContext } from './context'
+    import type { Editor } from '../../editor/editor'
+    import { getExamplePlayer } from '../../player'
+    import { getDocsContext } from '../context'
 
     let { code }: { code: string } = $props()
 
@@ -43,7 +43,7 @@
 
         let isMounted = true
 
-        import('../editor/editor').then(({ createEditor }) => {
+        import('../../editor/editor').then(({ createEditor }) => {
             if (!isMounted || !container) {
                 return
             }

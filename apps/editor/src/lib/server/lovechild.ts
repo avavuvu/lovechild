@@ -1,17 +1,21 @@
-import { camera, colorNames, combineNames, coordinateNames, definitions, image, Image, previous, sourceFunctions, sourceNames, splitNames, text, TextImage, video } from '@lovechild/core'
+import { camera, colorNames, combineNames, coordinateNames, definitions, Image, picture, previous, sourceFunctions, sourceNames, splitNames, text, TextImage, video } from '@lovechild/core'
 import type { EntryParameter } from '../docs/reference'
-import { readParameterTypes } from './types'
+import { readSignatureTypes } from './types'
 
 export interface LovechildDoc {
     name: string
     category: string
     synonyms: ReadonlyArray<string>
     parameters: ReadonlyArray<EntryParameter>
+    returns: ReadonlyArray<string>
+    owners: ReadonlyArray<string>
 }
 
 type Callable = (...values: Array<never>) => unknown
 
 type FindPath = (name: string) => ReadonlyArray<string>
+
+type FindOwner = (name: string) => string | undefined
 
 const stepCategories = new Map<string, string>([
     ...sourceNames.map((name): [string, string] => [name, 'source']),
@@ -29,15 +33,17 @@ const readParameterNames = (callable: Callable) => {
     return list.split(',').map((name) => name.trim()).filter(Boolean)
 }
 
-const readParameters = (name: string, callable: Callable, path: ReadonlyArray<string>): ReadonlyArray<EntryParameter> => {
+const readSignature = (name: string, callable: Callable, path: ReadonlyArray<string>) => {
     const defined = name in definitions ? definitions[name as keyof typeof definitions].parameters : []
-    const types = readParameterTypes(path)
+    const types = readSignatureTypes(path)
 
-    return readParameterNames(callable).map((parameter) => ({
+    const parameters = readParameterNames(callable).map((parameter): EntryParameter => ({
         name: parameter,
-        types: types.get(parameter) ?? [],
+        types: types.parameters.get(parameter) ?? [],
         default: defined.find((found) => found.name === parameter)?.default?.toString(),
     }))
+
+    return { parameters, returns: types.returns }
 }
 
 const readMethods = (prototype: object) => Object.getOwnPropertyNames(prototype)
@@ -49,7 +55,7 @@ const readWrapper = (callable: Callable) => {
     return match ? { target: match[2], isSame: match[1].replace(/\s/g, '') === match[3].replace(/\s/g, '') } : undefined
 }
 
-const createDocs = (functions: ReadonlyArray<[string, Callable]>, findCategory: (name: string) => string, findPath: FindPath) => {
+const createDocs = (functions: ReadonlyArray<[string, Callable]>, findCategory: (name: string) => string, findPath: FindPath, findOwner: FindOwner = () => undefined) => {
     const docs = new Map<string, LovechildDoc & { synonyms: Array<string> }>()
     const canonical = new Map<Callable, string>()
 
@@ -64,7 +70,13 @@ const createDocs = (functions: ReadonlyArray<[string, Callable]>, findCategory: 
         }
 
         canonical.set(callable, name)
-        docs.set(name, { name, category: findCategory(wrapper?.target ?? name), synonyms: [], parameters: readParameters(name, callable, findPath(name)) })
+        docs.set(name, {
+            name,
+            category: findCategory(wrapper?.target ?? name),
+            synonyms: [],
+            owners: [findOwner(name)].filter((owner) => owner !== undefined),
+            ...readSignature(name, callable, findPath(name)),
+        })
     })
 
     return Array.from(docs.values())
@@ -73,7 +85,7 @@ const createDocs = (functions: ReadonlyArray<[string, Callable]>, findCategory: 
 export const readLovechildDocs = (): ReadonlyArray<LovechildDoc> => {
     const findCategory = (name: string) => stepCategories.get(name) ?? 'other'
     const sources: Array<[string, Callable]> = [...Object.entries(sourceFunctions), ['previous', previous]]
-    const media: Array<[string, Callable]> = [['camera', camera], ['video', video], ['image', image]]
+    const media: Array<[string, Callable]> = [['camera', camera], ['video', video], ['picture', picture]]
 
     const findExportPath: FindPath = (name) => name in sourceFunctions ? ['sourceFunctions', name] : [name]
     const findTextPath: FindPath = (name) => name === 'text' ? [name] : ['TextImage', name]
@@ -81,7 +93,7 @@ export const readLovechildDocs = (): ReadonlyArray<LovechildDoc> => {
     return [
         ...createDocs(sources, () => 'source', findExportPath),
         ...createDocs(media, () => 'media', findExportPath),
-        ...createDocs([['text', text], ...readMethods(TextImage.prototype)], () => 'text', findTextPath),
-        ...createDocs(readMethods(Image.prototype), findCategory, (name) => ['Image', name]),
+        ...createDocs([['text', text], ...readMethods(TextImage.prototype)], () => 'text', findTextPath, (name) => name === 'text' ? undefined : 'TextImage'),
+        ...createDocs(readMethods(Image.prototype), findCategory, (name) => ['Image', name], () => 'Image'),
     ]
 }

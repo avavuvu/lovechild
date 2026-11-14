@@ -1,1 +1,1 @@
-**black()** generates a solid black image. Equivalent to `color(0, 0, 0)`
+**black()** generates a solid black [[image]]. Equivalent to [[color()|color]]`(0, 0, 0)`

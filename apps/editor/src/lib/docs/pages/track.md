@@ -5,7 +5,7 @@ parameters:
     types: [string]
 ---
 
-**track(name)** names part of a [[tracks|track]] so you can use it somewhere else. 
+**track()** names part of a [[tracks|track]] so you can use it somewhere else. 
 
 ```lovechild
 $: stack(
@@ -25,4 +25,4 @@ $: white().layer(
 )
 ```
 
-For a quick pick by sound without naming anything, use [[only()]].
+To just pick a sound to trigger on without naming anything, use [[only()]].

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Notice } from './messages'
+    import type { Notice } from '../messages'
 
     let { notices, height = $bindable(0) }: {
         notices: ReadonlyArray<Notice>
@@ -10,7 +10,13 @@
 <div class="notices" class:open={notices.length > 0} bind:clientHeight={height}>
     <ul>
         {#each notices as notice, index (index)}
-            <li class={notice.kind}>{notice.text}</li>
+            <li class={notice.kind}>
+                {#if notice.onSelect}
+                    <button type="button" onclick={notice.onSelect}>{notice.text}</button>
+                {:else}
+                    {notice.text}
+                {/if}
+            </li>
         {/each}
     </ul>
 </div>
@@ -45,6 +51,17 @@
 
     li.warning {
         background: var(--color-warning);
+    }
+
+    li.info {
+        background: var(--color-primary);
+    }
+
+    button {
+        width: 100%;
+        text-align: left;
+        color: inherit;
+        cursor: pointer;
     }
 
     @media (prefers-reduced-motion: reduce) {

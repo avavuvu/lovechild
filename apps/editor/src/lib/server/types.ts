@@ -1,5 +1,6 @@
+import { readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import ts from 'typescript'
 
 const options: ts.CompilerOptions = {
@@ -12,11 +13,17 @@ const options: ts.CompilerOptions = {
     types: [],
 }
 
-const findCoreEntry = () => createRequire(join(process.cwd(), 'package.json')).resolve('@lovechild/core')
+const resolvePackage = (name: string) => createRequire(join(process.cwd(), 'package.json')).resolve(name)
+
+const listFolder = (entry: string) => readdirSync(dirname(entry))
+    .filter((file) => file.endsWith('.ts'))
+    .map((file) => join(dirname(entry), file))
+
+export const strudelFolder = dirname(resolvePackage('@lovechild/strudel'))
 
 const createChecker = () => {
-    const entry = findCoreEntry()
-    const program = ts.createProgram([entry], options)
+    const entry = resolvePackage('@lovechild/core')
+    const program = ts.createProgram([entry, ...listFolder(resolvePackage('@lovechild/strudel'))], options)
     const checker = program.getTypeChecker()
     const source = program.getSourceFile(entry)
     const entrySymbol = source && checker.getSymbolAtLocation(source)
@@ -25,10 +32,10 @@ const createChecker = () => {
         throw new Error('@lovechild/core could not be read for parameter types')
     }
 
-    return { checker, exports: checker.getExportsOfModule(entrySymbol) }
+    return { program, checker, exports: checker.getExportsOfModule(entrySymbol) }
 }
 
-const { checker, exports } = createChecker()
+export const { program, checker, exports } = createChecker()
 
 const resolveAlias = (symbol: ts.Symbol) => symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
 
@@ -39,7 +46,7 @@ const findAliasDeclaration = (node: ts.TypeReferenceNode) => {
     return symbol && resolveAlias(symbol).declarations?.find(ts.isTypeAliasDeclaration)
 }
 
-const expandType = (node: ts.TypeNode): ReadonlyArray<string> => {
+export const expandType = (node: ts.TypeNode): ReadonlyArray<string> => {
     if (ts.isUnionTypeNode(node)) {
         return node.types.flatMap(expandType)
     }
@@ -58,11 +65,21 @@ const readTypes = (parameter: ts.Symbol) => {
     return [checker.typeToString(checker.getTypeOfSymbol(parameter))]
 }
 
-export const readParameterTypes = (path: ReadonlyArray<string>): ReadonlyMap<string, ReadonlyArray<string>> => {
+const readReturnTypes = (signature: ts.Signature, owner: string | undefined): ReadonlyArray<string> => {
+    const declaration = signature.getDeclaration()
+    const written = declaration && 'type' in declaration && declaration.type && ts.isTypeNode(declaration.type) ? expandType(declaration.type) : [checker.typeToString(signature.getReturnType())]
+    return Array.from(new Set(written.map((type) => type === 'this' && owner ? owner : type)))
+}
+
+export const readSignatureTypes = (path: ReadonlyArray<string>) => {
     const [first, ...rest] = path
     const start = exports.find((symbol) => symbol.name === first)
     const symbol = rest.reduce<ts.Symbol | undefined>((current, name) => current && findMemberType(current).getProperty(name), start && resolveAlias(start))
     const signature = symbol && checker.getTypeOfSymbol(symbol).getCallSignatures()[0]
+    const owner = rest.length > 0 ? first : undefined
 
-    return new Map(signature?.parameters.map((parameter) => [parameter.name, readTypes(parameter)]) ?? [])
+    return {
+        parameters: new Map(signature?.parameters.map((parameter) => [parameter.name, readTypes(parameter)]) ?? []),
+        returns: signature ? readReturnTypes(signature, owner) : [],
+    }
 }

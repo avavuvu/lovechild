@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Location, Runtime, Warning } from '@lovechild/strudel'
     import { onMount, type Snippet } from 'svelte'
-    import { afterNavigate } from '$app/navigation'
+    import { afterNavigate, goto } from '$app/navigation'
     import { page } from '$app/state'
     import Graph from '$lib/docs/Graph.svelte'
     import QuickReference from '$lib/docs/QuickReference.svelte'
@@ -15,17 +15,21 @@
     import { examples, pickExampleName } from '$lib/examples/examples'
     import { describeError, describeWarning, type Notice } from '$lib/messages'
     import { setExamplePlayer, type Example, type ExamplePlayer } from '$lib/player'
-    import Toolbar from '$lib/Toolbar.svelte'
+    import CodeToolbar from '$lib/toolbar/CodeToolbar.svelte'
+    import ExploreToolbar from '$lib/toolbar/ExploreToolbar.svelte'
+    import Toolbar from '$lib/toolbar/Toolbar.svelte'
     import '../app.css'
 
     let { children }: { children: Snippet } = $props()
 
     const codePath = '/code'
+    const explorePath = '/explore'
     const editorId = Symbol('editor')
     const graphRoutes = ['/explore', '/[page]', '/strudel/[page]']
     const isCodePage = $derived(page.route.id === codePath)
     const isGraphPage = $derived(graphRoutes.includes(page.route.id ?? ''))
-    const paneless = [codePath, '/explore']
+    const isExplorePage = $derived(page.route.id === explorePath)
+    const paneless = [codePath, explorePath]
 
     let canvas: HTMLCanvasElement
     let container: HTMLElement
@@ -44,6 +48,8 @@
     let playing: Example | undefined = $state.raw()
     let last: Example | undefined
     let lastPanePath = $state('/')
+    let search = $state('')
+    let searchFocus: string | undefined = $state()
 
     afterNavigate(({ from }) => {
         if (from && !paneless.includes(from.route.id ?? '')) {
@@ -77,6 +83,18 @@
         addNotice({ kind: 'error', text: describeError(error) })
     }
 
+    const unmute = async () => {
+        if (!isMuted) {
+            return
+        }
+
+        isMuted = false
+        await runtime?.unmute()
+    }
+
+    const mutedNotice: Notice = { kind: 'info', text: 'muted', onSelect: unmute }
+    const shownNotices = $derived(isMuted ? [mutedNotice, ...notices] : notices)
+
     const player: ExamplePlayer = {
         get playing() {
             return playing?.id
@@ -85,6 +103,10 @@
             return last?.code
         },
         play: async (example) => {
+            if (!example.isAutomatic) {
+                await unmute()
+            }
+
             playing?.onFrame(0, [])
             playing = example
             last = example
@@ -115,7 +137,7 @@
         editor?.showErrors(errors)
     }
 
-    const playEditor = async (code: string) => {
+    const playEditor = async (code: string, isAutomatic = false) => {
         warnings = []
         errors = []
         editor?.showWarnings([])
@@ -124,6 +146,7 @@
         const result = await player.play({
             id: editorId,
             code,
+            isAutomatic,
             onFrame: (time, haps) => editor?.highlight(time, haps),
             showWarning: showEditorWarning,
             showError: showEditorError,
@@ -140,21 +163,27 @@
         playEditor(code)
     }
 
-    const replay = () => {
-        if (last) {
-            player.play(last)
+    const isEditing = (target: EventTarget | null) => {
+        if (!(target instanceof HTMLElement)) {
+            return false
         }
+
+        const isFilledField = (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) && target.value !== ''
+        return isFilledField || target.closest('.cm-editor') !== null
     }
 
-    const toggleMute = async () => {
-        if (isMuted) {
-            await runtime?.unmute()
-            isMuted = false
+    const goBack = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape' || event.defaultPrevented || isCodePage || isEditing(event.target)) {
             return
         }
 
-        isMuted = true
-        await runtime?.mute()
+        goto(isExplorePage ? codePath : explorePath)
+    }
+
+    const replay = () => {
+        if (last) {
+            player.play({ ...last, isAutomatic: false })
+        }
     }
 
     onMount(() => {
@@ -186,11 +215,11 @@
             editor.setCode(code)
 
             if (isCodePage) {
-                playEditor(code)
+                playEditor(code, true)
                 return
             }
 
-            player.play({ id: Symbol('background'), code, onFrame: () => {} })
+            player.play({ id: Symbol('background'), code, isAutomatic: true, onFrame: () => {} })
         })
 
         return () => {
@@ -228,6 +257,8 @@
     })
 </script>
 
+<svelte:window onkeydown={goBack} />
+
 <svelte:head>
     <title>
         lovechild REPL
@@ -245,18 +276,36 @@
     <div bind:this={container} hidden={display !== 'code'}></div>
     <div bind:this={viewerContainer} hidden={display === 'code'}></div>
 </main>
-<Graph current={page.url.pathname} isVisible={isGraphPage} isInteractive={page.route.id === '/explore'} />
+<Graph current={page.url.pathname} isVisible={isGraphPage} isInteractive={isExplorePage} search={isExplorePage ? search : ''} focus={isExplorePage ? searchFocus : undefined} />
 {@render children()}
-<Toolbar
-    infoHref={isCodePage ? lastPanePath : codePath}
-    {notices}
-    {isMuted}
-    onToggleMute={toggleMute}
-    onPlay={() => isCodePage ? editor?.evaluate() : replay()}
-    onStop={player.stop}
-    panel={isCodePage ? panel : undefined}
-    bind:isPanelOpen
-/>
+{#if isCodePage}
+    <CodeToolbar
+        infoHref={lastPanePath}
+        notices={shownNotices}
+        onPlay={() => editor?.evaluate()}
+        onStop={player.stop}
+        {panel}
+        bind:isPanelOpen
+    />
+{:else if isExplorePage}
+    <ExploreToolbar
+        infoHref={lastPanePath}
+        notices={shownNotices}
+        onPlay={replay}
+        onStop={player.stop}
+        bind:search
+        bind:focus={searchFocus}
+    />
+{:else}
+    <Toolbar
+        isGraphSelected={isGraphPage}
+        isInfoSelected
+        infoHref={lastPanePath}
+        notices={shownNotices}
+        onPlay={replay}
+        onStop={player.stop}
+    />
+{/if}
 
 <style>
     main {

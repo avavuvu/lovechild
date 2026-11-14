@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { marked } from 'marked'
 import type { EntryParameter } from '../docs/reference'
 
@@ -8,6 +9,7 @@ export interface StrudelDoc {
     categories: ReadonlyArray<string>
     synonyms: ReadonlyArray<string>
     parameters: ReadonlyArray<EntryParameter>
+    returns: ReadonlyArray<string>
     description: string
     examples: ReadonlyArray<string>
 }
@@ -19,9 +21,11 @@ interface Tag {
 
 const commentPattern = /\/\*\*([\s\S]*?)\*\/\s*([^\n]*)/g
 const tagPattern = /^@(\w+)\s?([\s\S]*)$/
+const returnPattern = /^\{((?:[^{}]|\{[^{}]*\})*)\}/
 const parameterPattern = /^(?:\{((?:[^{}]|\{[^{}]*\})*)\}\s+)?(\S+)\s*-?\s*([\s\S]*)$/
 const hiddenTags = ['private', 'ignore', 'noAutocomplete']
 const untagged = 'untagged'
+const ignoredTags = ['superdough']
 const excludedFolders = /(^|\/)(node_modules|dist|shift-parser|shift-reducer|shift-traverser)\//
 
 const namePatterns = [
@@ -31,11 +35,11 @@ const namePatterns = [
     /^(?:async\s+)?(\w+)\s*\(/,
 ]
 
-const strudelFolder = join(process.cwd(), '.strudel', 'packages')
+const strudelFolder = dirname(dirname(createRequire(import.meta.url).resolve('@strudel/core/package.json')))
 
 const readSources = () => {
     if (!existsSync(strudelFolder)) {
-        throw new Error('Strudel sources are missing, run bun run strudel')
+        throw new Error('Strudel sources are missing, run bun run setup')
     }
 
     return readdirSync(strudelFolder, { recursive: true, encoding: 'utf8' })
@@ -51,6 +55,20 @@ const readTags = (parts: ReadonlyArray<string>): ReadonlyArray<Tag> => parts.fla
     return match ? [{ name: match[1], value: match[2].trim() }] : []
 })
 
+const typeSpellings: Record<string, string> = {
+    Number: 'number',
+    String: 'string',
+    Boolean: 'boolean',
+    Function: 'function',
+    Object: 'object',
+    '*': 'any',
+}
+
+const normalizeType = (type: string) => {
+    const bare = type.replace(/^[!?]/, '')
+    return typeSpellings[bare] ?? bare
+}
+
 const splitTypes = (text: string) => {
     const parts = Array.from(text.replace(/^\((.*)\)$/, '$1')).reduce((found, character) => {
         const depth = found.depth + ('<([{'.includes(character) ? 1 : 0) - ('>)]}'.includes(character) ? 1 : 0)
@@ -62,7 +80,7 @@ const splitTypes = (text: string) => {
         return { depth, parts: [...found.parts.slice(0, -1), `${found.parts.at(-1)}${character}`] }
     }, { depth: 0, parts: [''] }).parts
 
-    return parts.map((part) => part.trim()).filter(Boolean)
+    return parts.map((part) => normalizeType(part.trim())).filter(Boolean)
 }
 
 const readParameter = (value: string): EntryParameter => {
@@ -85,13 +103,14 @@ const readDoc = (body: string, code: string): StrudelDoc | undefined => {
         return undefined
     }
 
-    const categories = Array.from(new Set(splitList(findValues('tags'))))
+    const categories = Array.from(new Set(splitList(findValues('tags')))).filter((category) => !ignoredTags.includes(category))
 
     return {
         name,
         categories: categories.length > 0 ? categories : [untagged],
         synonyms: splitList(findValues('synonyms')),
         parameters: findValues('param').map(readParameter),
+        returns: splitTypes([...findValues('returns'), ...findValues('return')][0]?.match(returnPattern)?.[1] ?? ''),
         description: marked.parse(description.trim(), { async: false }),
         examples: findValues('example'),
     }
