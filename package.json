@@ -18,9 +18,9 @@
     ],
     "scripts": {
         "strudel": "bun scripts/strudel.ts",
-        "setup": "bun run strudel && bun install",
-        "dev": "bun --filter @lovechild/editor dev",
+        "setup": "bun run strudel",
         "build": "bun --filter @lovechild/editor build",
+        "dev": "bun --filter @lovechild/editor dev",
         "check": "tsc -p packages/core && tsc -p packages/webgl && tsc -p packages/strudel && bun --filter @lovechild/editor check"
     },
     "devDependencies": {
