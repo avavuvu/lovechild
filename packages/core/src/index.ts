@@ -4,5 +4,5 @@ export type { BufferInput, Graph, MediaInput, Pass, Target, Uniform } from './gl
 export type { Amount, Keyword, MediaName, Operation, Paint, Parameter, Pattern, Scalar, TextSettings, Value } from './operation'
 export { camera, picture, previous, sourceFunctions, video } from './sources'
 export { isTextStyle, text, TextImage, textStyleNames } from './text'
-export { closeLoop, isEmptyLoop } from './tree'
+export { closeLoop, hasFreePrevious, isEmptyLoop, isOpaque } from './tree'
 export { colorNames, combineNames, coordinateNames, definitions, sourceNames, splitNames } from './steps'

@@ -150,6 +150,14 @@ vec4 thresh(vec4 color, float threshold) {
     return vec4(vec3(smoothstep(threshold - tolerance, threshold + tolerance, luminance(color))), color.a);
 }`,
     },
+    opacity: {
+        parameters: [{ name: 'amount', default: 0.5 }],
+        shapes: ['scalar'],
+        glsl: `
+vec4 opacity(vec4 color, float amount) {
+    return vec4(color.rgb, color.a * clamp(amount, 0.0, 1.0));
+}`,
+    },
     luma: {
         parameters: [{ name: 'threshold', default: 0.5 }],
         shapes: ['scalar'],
@@ -158,7 +166,7 @@ vec4 thresh(vec4 color, float threshold) {
 vec4 luma(vec4 color, float threshold) {
     const float tolerance = 0.1;
     float amount = smoothstep(threshold - tolerance, threshold + tolerance, luminance(color));
-    return vec4(color.rgb * amount, amount);
+    return vec4(color.rgb, amount);
 }`,
     },
 } satisfies Record<string, Definition>

@@ -15,9 +15,7 @@ interface TextValues {
 
 const defaults: TextValues = { content: '', font: 'sans-serif', outline: 0, wrap: 1 }
 
-const fillMask = '#ff0000'
-
-const strokeMask = '#00ff00'
+const glyphColor = '#ffffff'
 
 const measureSize = 100
 
@@ -65,9 +63,7 @@ const getLines = (context: CanvasRenderingContext2D, values: TextValues) => {
 
 const drawText = (context: CanvasRenderingContext2D, values: TextValues, width: number, height: number) => {
     context.canvas.width = width
-    context.canvas.height = height
-    context.fillStyle = '#000000'
-    context.fillRect(0, 0, width, height)
+    context.canvas.height = height * 2
     context.font = `${measureSize}px ${values.font}`
 
     const lines = getLines(context, values)
@@ -85,18 +81,17 @@ const drawText = (context: CanvasRenderingContext2D, values: TextValues, width: 
     context.textAlign = 'center'
     context.textBaseline = 'middle'
     context.lineJoin = 'round'
-    context.fillStyle = fillMask
-    context.strokeStyle = strokeMask
+    context.fillStyle = glyphColor
+    context.strokeStyle = glyphColor
     context.lineWidth = outline * size * 2
 
     for (const [index, line] of lines.entries()) {
         const y = height / 2 + (index - (lines.length - 1) / 2) * lineHeight * size
+        context.fillText(line, width / 2, y)
 
         if (outline > 0) {
-            context.strokeText(line, width / 2, y)
+            context.strokeText(line, width / 2, height + y)
         }
-
-        context.fillText(line, width / 2, y)
     }
 }
 

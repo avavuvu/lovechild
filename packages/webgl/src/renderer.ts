@@ -9,6 +9,9 @@ interface CompiledPass {
     inputs: ReadonlyArray<BufferInput>
     areaSizeLocation: WebGLUniformLocation | null
     timeLocation: WebGLUniformLocation | null
+    previousTimeLocation: WebGLUniformLocation | null
+    cpsLocation: WebGLUniformLocation | null
+    isFirstFrameLocation: WebGLUniformLocation | null
     originLocation: WebGLUniformLocation | null
     bufferResolutionLocation: WebGLUniformLocation | null
     parameterLocations: ReadonlyArray<WebGLUniformLocation | null>
@@ -29,8 +32,9 @@ export interface CompiledGraph {
 
 export interface Renderer {
     compile: (graph: Graph) => CompiledGraph
-    draw: (graph: CompiledGraph, values: ReadonlyArray<number>, time: number, previews: ReadonlyArray<HTMLElement>, media: ReadonlyArray<MediaElement>) => void
+    draw: (graph: CompiledGraph, values: ReadonlyArray<number>, time: number, cps: number, previews: ReadonlyArray<HTMLElement>, media: ReadonlyArray<MediaElement>) => void
     clear: () => void
+    setScale: (scale: number) => void
     release: (element: MediaElement) => void
     destroy: () => void
 }
@@ -48,6 +52,9 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
     const mediaTextures = new Map<MediaElement, MediaTexture>()
     const emptyTexture = createEmptyTexture(gl)
     let writeIndex = 0
+    let drawnGraph: CompiledGraph | undefined
+    let previousTime = 0
+    let wasResized = false
 
     const getProgram = (source: string) => {
         const existing = programs.get(source)
@@ -62,12 +69,21 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
     }
 
     let size = { width: canvas.width, height: canvas.height }
+    let bounds = { width: canvas.clientWidth, height: canvas.clientHeight }
+    let scale = 1
+
+    const measure = () => {
+        const ratio = window.devicePixelRatio * scale
+
+        size = {
+            width: Math.max(1, Math.round(bounds.width * ratio)),
+            height: Math.max(1, Math.round(bounds.height * ratio)),
+        }
+    }
 
     const observer = new ResizeObserver(([entry]) => {
-        size = {
-            width: Math.round(entry.contentRect.width * window.devicePixelRatio),
-            height: Math.round(entry.contentRect.height * window.devicePixelRatio),
-        }
+        bounds = { width: entry.contentRect.width, height: entry.contentRect.height }
+        measure()
     })
 
     observer.observe(canvas)
@@ -81,6 +97,7 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
 
         canvas.width = width
         canvas.height = height
+        wasResized = true
 
         for (const buffer of buffers) {
             resizeFeedbackBuffer(gl, buffer, width, height)
@@ -148,6 +165,9 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                     inputs: pass.inputs,
                     areaSizeLocation: gl.getUniformLocation(program, 'areaSize'),
                     timeLocation: gl.getUniformLocation(program, 'time'),
+                    previousTimeLocation: gl.getUniformLocation(program, 'previousTime'),
+                    cpsLocation: gl.getUniformLocation(program, 'cps'),
+                    isFirstFrameLocation: gl.getUniformLocation(program, 'isFirstFrame'),
                     originLocation: gl.getUniformLocation(program, 'origin'),
                     bufferResolutionLocation: gl.getUniformLocation(program, 'bufferResolution'),
                     parameterLocations: graph.uniforms.map((uniform) => gl.getUniformLocation(program, uniform.name)),
@@ -160,9 +180,11 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                 }
             }),
         }),
-        draw: (graph, values, time, previews, media) => {
+        draw: (graph, values, time, cps, previews, media) => {
             resizeCanvas()
             addBuffers(graph.bufferCount)
+            const isFirstFrame = graph !== drawnGraph || wasResized
+            const lastTime = isFirstFrame ? time : previousTime
             const readyMedia = media.map(updateMedia)
 
             if (!graph.passes.some((pass) => pass.target.kind === 'screen')) {
@@ -186,6 +208,9 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                 gl.uniform2f(pass.originLocation, area.x, area.y)
                 gl.uniform2f(pass.bufferResolutionLocation, canvas.width, canvas.height)
                 gl.uniform1f(pass.timeLocation, time)
+                gl.uniform1f(pass.previousTimeLocation, lastTime)
+                gl.uniform1f(pass.cpsLocation, cps)
+                gl.uniform1f(pass.isFirstFrameLocation, isFirstFrame ? 1 : 0)
 
                 for (const [index, value] of values.entries()) {
                     gl.uniform1f(pass.parameterLocations[index], value)
@@ -212,8 +237,15 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
             }
 
             writeIndex = 1 - writeIndex
+            drawnGraph = graph
+            previousTime = time
+            wasResized = false
         },
         clear: clearScreen,
+        setScale: (next) => {
+            scale = next
+            measure()
+        },
         release: (element) => {
             const media = mediaTextures.get(element)
 

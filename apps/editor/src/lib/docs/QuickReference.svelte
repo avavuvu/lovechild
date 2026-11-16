@@ -131,7 +131,7 @@
 
     summary {
         cursor: pointer;
-        color: var(--color-white);
+        color: var(--color-on-accent);
         background-color: var(--kind-color);
         padding: 0 0 0 0.25em;
     }

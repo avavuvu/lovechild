@@ -52,7 +52,11 @@ export const px = pixels
 
 export const resolution = () => createSource('resolution', [])
 
-export const sourceFunctions = { osc, shape, polygon, solid, color, colour, rgb, xyz, white, black, hsv, oklch, noise, simplex, voronoi, gradient, pixels, px, resolution }
+export const fps = (rate?: Amount) => createSource('fps', [rate])
+
+export const seconds = (duration?: Amount) => createSource('seconds', [duration])
+
+export const sourceFunctions = { osc, shape, polygon, solid, color, colour, rgb, xyz, white, black, hsv, oklch, noise, simplex, voronoi, gradient, pixels, px, resolution, fps, seconds }
 
 for (const name of sourceNames) {
     if (!definitions[name].isInternal && !(name in sourceFunctions)) {

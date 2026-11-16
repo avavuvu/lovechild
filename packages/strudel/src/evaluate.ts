@@ -1,10 +1,10 @@
-import { Image, closeLoop, isImage, isEmptyLoop } from '@lovechild/core'
+import { Image, closeLoop, hasFreePrevious, isImage, isEmptyLoop, isOpaque } from '@lovechild/core'
 import { isPattern, Pattern, silence } from '@strudel/core'
 import { registerWidgetType, transpiler, type Widget } from '@strudel/transpiler'
 import { createNames, isName, type Track } from './names'
-import { separateStatements } from './statements'
+import { findBlockLabels, findTrackBlocks, separateStatements } from './statements'
 import { getNamedImages } from './visuals'
-import { collectWarnings, type Report } from './warnings'
+import { collectWarnings, reportWarning, type Location, type Report } from './warnings'
 
 export type MiniLocation = [number, number]
 
@@ -54,8 +54,28 @@ interface Registered {
     track: Track
 }
 
-const checkLoops = (registered: ReadonlyArray<Registered>) => {
-    const images = getNamedImages(new Map(registered.filter(({ name }) => isName(name)).map(({ name, track }) => [name, track])))
+interface InnerTrack extends Registered {
+    label: string
+}
+
+interface Block {
+    name: string
+    image: Image
+    location: Location | undefined
+}
+
+const reportCoveredBlocks = (blocks: ReadonlyArray<Block>) => {
+    for (const [index, block] of blocks.entries()) {
+        const cover = blocks.slice(index + 1).find((later) => isOpaque(later.image.operation))
+
+        if (cover) {
+            reportWarning({ details: { kind: 'coveredBlock', name: block.name, coveredBy: cover.name }, place: { locations: block.location ? [block.location] : [] } })
+        }
+    }
+}
+
+const checkLoops = (registered: ReadonlyArray<Registered>, inner: ReadonlyArray<Registered> = []) => {
+    const images = getNamedImages(new Map([...inner, ...registered].filter(({ name }) => isName(name)).map(({ name, track }) => [name, track])))
     const empty = registered.find(({ name, track }) => isImage(track) && isEmptyLoop(track, images, isName(name) ? name : undefined))
 
     if (empty) {
@@ -70,17 +90,25 @@ export const evaluateCode = async (code: string, scope: Record<string, unknown>,
     const previews: Array<Preview> = []
     const peeks: Array<Peek> = []
     const registered: Array<Registered> = []
-    const innerTracks: Array<Registered> = []
+    const innerTracks: Array<InnerTrack> = []
+    const namedInner: Array<Registered> = []
+    const trackBlocks = findTrackBlocks(code)
+    const blockLabels = findBlockLabels(code)
+    const labelCounts = new Map<string, number>()
+    const blocks: Array<Block> = []
     let anonymousCount = 0
 
     const registerTrack = function (this: Track, label: string) {
         const name = getTrackName(label)
         const track = closeTrack(this)
         const isOff = isMuted(label)
+        const occurrence = labelCounts.get(label) ?? 0
+        labelCounts.set(label, occurrence + 1)
         registered.push({ name, track })
 
         for (const inner of innerTracks.splice(0)) {
-            names.defineName(inner.name, isOff ? switchOff(inner.track) : inner.track)
+            const isInside = !trackBlocks.has(inner.label) || trackBlocks.get(inner.label) === label
+            names.defineName(inner.name, isOff && isInside ? switchOff(inner.track) : inner.track)
         }
 
         if (isName(name)) {
@@ -94,6 +122,11 @@ export const evaluateCode = async (code: string, scope: Record<string, unknown>,
         const id = name === '$' ? name + anonymousCount : name
         anonymousCount += 1
         tracks.set(id, track)
+
+        if (isImage(track)) {
+            blocks.push({ name, image: track, location: blockLabels.get(label)?.[occurrence] })
+        }
+
         return track
     }
 
@@ -108,9 +141,14 @@ export const evaluateCode = async (code: string, scope: Record<string, unknown>,
             throw new Error(`${name} is already a track`)
         }
 
+        if (isImage(this) && hasFreePrevious(this.operation)) {
+            reportWarning({ details: { kind: 'ambiguousPrevious', name }, place: { search: { text: label } } })
+        }
+
         const track = isMuted(label) ? switchOff(this) : this
         names.defineName(name, track)
-        innerTracks.push({ name, track })
+        innerTracks.push({ name, label, track })
+        namedInner.push({ name, track: this })
         return track
     }
 
@@ -136,10 +174,14 @@ export const evaluateCode = async (code: string, scope: Record<string, unknown>,
 
     const values = { ...scope, previous: names.readPrevious }
     const run = new Function('lookup', ...Object.keys(values), 'with (lookup) { return ' + output + ' }')
-    const { result, reports } = await collectWarnings(async (): Promise<unknown> => run(names.lookup, ...Object.values(values)))
+    const { result, reports } = await collectWarnings(async (): Promise<unknown> => {
+        const value = await run(names.lookup, ...Object.values(values))
+        reportCoveredBlocks(blocks)
+        return value
+    })
 
     const shown = tracks.size > 0 ? Array.from(tracks.values()) : [result].filter(isTrack).map(closeTrack)
-    checkLoops(tracks.size > 0 ? registered : shown.map((track) => ({ name: '$', track })))
+    checkLoops(tracks.size > 0 ? registered : shown.map((track) => ({ name: '$', track })), namedInner)
 
     return {
         tracks: shown,

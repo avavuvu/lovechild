@@ -1,5 +1,5 @@
 import { parse, tokTypes, type AnyNode, type Program, type Token, type TokenType } from 'acorn'
-import { visit } from './locations'
+import { isNode, visit } from './locations'
 
 interface Opening {
     after: number
@@ -44,6 +44,60 @@ const readProgram = (code: string, tokens: Array<Token>): Program | undefined =>
     } catch {
         return undefined
     }
+}
+
+const readTrackLabel = (node: AnyNode) => {
+    if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression' || node.callee.property.type !== 'Identifier' || node.callee.property.name !== 'track') {
+        return undefined
+    }
+
+    const [argument] = node.arguments
+    return argument?.type === 'Literal' && typeof argument.value === 'string' ? argument.value : undefined
+}
+
+export const findTrackBlocks = (code: string) => {
+    const blocks = new Map<string, string | undefined>()
+    const program = readProgram(code, [])
+
+    const enter = (node: AnyNode, block: string | undefined) => {
+        const inner = node.type === 'LabeledStatement' ? node.label.name : block
+        const label = readTrackLabel(node)
+
+        if (label !== undefined) {
+            blocks.set(label, inner)
+        }
+
+        for (const value of Object.values(node)) {
+            for (const child of Array.isArray(value) ? value : [value]) {
+                if (isNode(child)) {
+                    enter(child, inner)
+                }
+            }
+        }
+    }
+
+    if (program) {
+        enter(program, undefined)
+    }
+
+    return blocks
+}
+
+export const findBlockLabels = (code: string) => {
+    const labels = new Map<string, Array<{ start: number, end: number }>>()
+    const program = readProgram(code, [])
+
+    if (program) {
+        visit(program, (node) => {
+            if (node.type === 'LabeledStatement') {
+                const found = labels.get(node.label.name) ?? []
+                found.push({ start: node.label.start, end: node.label.end })
+                labels.set(node.label.name, found)
+            }
+        })
+    }
+
+    return labels
 }
 
 export const separateStatements = (code: string) => {

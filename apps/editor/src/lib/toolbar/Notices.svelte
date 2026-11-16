@@ -42,7 +42,7 @@
     li {
         padding: 4px var(--gap);
         white-space: pre-wrap;
-        color: var(--color-white);
+        color: var(--color-on-accent);
     }
 
     li.error {

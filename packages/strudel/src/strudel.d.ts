@@ -73,6 +73,7 @@ declare module '@strudel/core' {
     export const setTime: (getTime: () => number) => void
     export const setClockTime: (getClockTime: () => number) => void
     export const isPattern: (value: unknown) => value is Pattern
+    export const isControlName: (name: string) => boolean
     export const reify: <Value>(value: Value | Pattern<Value>) => Pattern<Value>
     export const stack: (...patterns: Array<Pattern>) => Pattern
     export const silence: Pattern

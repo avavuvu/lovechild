@@ -1,5 +1,5 @@
 import { isImage, type Image } from '../image'
-import type { Argument, Feedback, Media, Operation, Parameter, Text } from '../operation'
+import type { Argument, Capture, Feedback, Media, Operation, Parameter, Text } from '../operation'
 import { definitions } from '../steps'
 import { getChildren, hasFreePrevious } from '../tree'
 import type { Graph, MediaInput, Pass, Target, Uniform } from './graph'
@@ -25,15 +25,48 @@ const findScope = (operation: Operation, target: Operation, scope: Feedback | un
     return undefined
 }
 
+const findReadTracks = (roots: ReadonlyArray<Operation>, tracks: ReadonlyMap<string, Image>) => {
+    const names = new Set<string>()
+    const seen = new Set<Operation>()
+
+    const visit = (operation: Operation) => {
+        if (seen.has(operation)) {
+            return
+        }
+
+        seen.add(operation)
+
+        if (operation.kind === 'previous' && operation.track !== undefined && !names.has(operation.track)) {
+            names.add(operation.track)
+            const track = tracks.get(operation.track)
+
+            if (track) {
+                visit(track.operation)
+            }
+        }
+
+        getChildren(operation).forEach(visit)
+    }
+
+    roots.forEach(visit)
+    return names
+}
+
 export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray<Image>, tracks: ReadonlyMap<string, Image>): Graph => {
     const uniforms: Array<Uniform> = []
     const uniformNames = new Map<Operation, ReadonlyArray<Declared>>()
-    const buffers = new Map<Feedback, number>()
+    const buffers = new Map<Feedback | Capture, number>()
     const trackLoops = new Map<string, Feedback>()
     const media: Array<MediaInput> = []
     const mediaIndexes = new Map<string, number>()
     const textKeys = new Map<Text, string>()
     const passes: Array<Pass> = []
+    const roots = [screen, ...previews].filter((image) => image !== undefined).map((image) => image.operation)
+
+    const loopInputs = new Map(Array.from(findReadTracks(roots, tracks)).flatMap((name): Array<[Operation, string]> => {
+        const track = tracks.get(name)
+        return track && track.operation.kind !== 'feedback' ? [[track.operation, name]] : []
+    }))
 
     const getTextKey = (operation: Text) => {
         const existing = textKeys.get(operation)
@@ -72,7 +105,9 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
                 }
 
                 const name = `parameter${uniforms.length}`
-                uniforms.push(definition?.hasColorChannels ? { name, value, encode, colorChannel: index } : { name, value, encode })
+                const channel = definition?.hasColorChannels ? { colorChannel: index } : {}
+                const onset = definition?.isOnset ? { isOnset: true } : {}
+                uniforms.push({ name, value, encode, ...channel, ...onset })
                 return name
             }
 
@@ -106,6 +141,18 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
             addPass(feedback.input, feedback, { kind: 'buffer', index })
             return index
         },
+        getCaptureBuffer: (capture, scope) => {
+            const existing = buffers.get(capture)
+
+            if (existing !== undefined) {
+                return existing
+            }
+
+            const index = buffers.size
+            buffers.set(capture, index)
+            addPass(capture, scope, { kind: 'buffer', index })
+            return index
+        },
         getTrackLoop: (name) => {
             const existing = trackLoops.get(name)
 
@@ -123,9 +170,11 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
             trackLoops.set(name, loop)
             return loop
         },
+        findTrackLoop: (operation) => {
+            const name = loopInputs.get(operation)
+            return name === undefined ? undefined : resources.getTrackLoop(name)
+        },
     }
-
-    const roots = [screen, ...previews].filter((image) => image !== undefined).map((image) => image.operation)
 
     const getPreviewScope = (operation: Operation): Feedback | undefined => {
         if (!hasFreePrevious(operation)) {

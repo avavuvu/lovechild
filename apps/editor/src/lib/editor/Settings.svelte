@@ -1,21 +1,29 @@
 <script lang="ts">
-    import { displays, type Display } from './displays'
+    import { changeSetting, settingNames, settingOptions, settings, type SettingName } from './preferences.svelte'
 
-    let { display = $bindable('code') }: {
-        display?: Display
-    } = $props()
+    const labels: Record<SettingName, string> = {
+        theme: 'theme',
+        format: 'format on run',
+        resolution: 'resolution',
+        display: 'display',
+    }
 </script>
 
 <details>
     <summary>advanced settings</summary>
-    <fieldset>
-        {#each displays as name (name)}
-            <label>
-                <input type="radio" name="display" value={name} bind:group={display} />
-                {name}
-            </label>
+    <div class="settings">
+        {#each settingNames as name (name)}
+            <span class="name">{labels[name]}</span>
+            <div class="options" role="radiogroup" aria-label={labels[name]}>
+                {#each settingOptions[name] as option (option)}
+                    <label>
+                        <input type="radio" {name} value={option} checked={settings[name] === option} onchange={() => changeSetting(name, option)} />
+                        {option}
+                    </label>
+                {/each}
+            </div>
         {/each}
-    </fieldset>
+    </div>
 </details>
 
 <style>
@@ -27,10 +35,21 @@
         cursor: pointer;
     }
 
-    fieldset {
-        display: flex;
-        gap: 16px;
+    .settings {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: var(--gap) 16px;
         margin-block-start: var(--gap);
+    }
+
+    .name {
+        color: var(--color-muted);
+    }
+
+    .options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
     }
 
     label {

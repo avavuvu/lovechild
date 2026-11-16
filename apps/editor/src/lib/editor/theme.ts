@@ -47,11 +47,29 @@ const layout = EditorView.theme({
     '.cm-content > canvas': {
         display: 'block',
     },
-    '.cm-gutterElement.cm-image-track, .cm-image-name, .cm-image-name *': {
+    '.cm-gutterElement.cm-image-track, .cm-kind-image, .cm-kind-image *': {
         color: 'var(--color-image)',
     },
-    '.cm-gutterElement.cm-sound-track, .cm-sound-name, .cm-sound-name *': {
+    '.cm-gutterElement.cm-sound-track, .cm-kind-sound, .cm-kind-sound *': {
         color: 'var(--color-sound)',
+    },
+    '.cm-kind-text, .cm-kind-text *': {
+        color: 'var(--color-text)',
+    },
+    '.cm-kind-neutral, .cm-kind-neutral *': {
+        color: 'var(--color-neutral)',
+    },
+    '.cm-kind-image.cm-quiet, .cm-kind-image.cm-quiet *': {
+        color: 'var(--color-image-quiet)',
+    },
+    '.cm-kind-text.cm-quiet, .cm-kind-text.cm-quiet *': {
+        color: 'var(--color-text-quiet)',
+    },
+    '.cm-kind-sound.cm-quiet, .cm-kind-sound.cm-quiet *': {
+        color: 'var(--color-sound-quiet)',
+    },
+    '.cm-kind-neutral.cm-quiet, .cm-kind-neutral.cm-quiet *': {
+        color: 'var(--color-neutral-quiet)',
     },
     '.cm-track-toggle, .cm-boolean-toggle': {
         appearance: 'none',
@@ -97,9 +115,6 @@ const layout = EditorView.theme({
     '.cm-pattern-string, .cm-pattern-string *': {
         color: 'var(--color-syntax-pattern-string)',
     },
-    '.cm-text-function, .cm-text-function *': {
-        color: 'var(--color-text)',
-    },
     '.cm-line.cm-warning-line': {
         background: 'var(--color-warning-line)',
     },
@@ -126,15 +141,11 @@ const layout = EditorView.theme({
 
 const highlightStyle = HighlightStyle.define([
     { tag: tags.keyword, color: 'var(--color-syntax-keyword)' },
-    { tag: tags.variableName, color: 'var(--color-syntax-variable)' },
-    { tag: tags.definition(tags.variableName), color: 'var(--color-syntax-definition)' },
-    { tag: tags.special(tags.variableName), color: 'var(--color-syntax-special-variable)' },
-    { tag: tags.propertyName, color: 'var(--color-syntax-property)' },
+    { tag: [tags.variableName, tags.propertyName, tags.labelName], color: 'var(--color-syntax-variable)' },
     { tag: [tags.string, tags.special(tags.string)], color: 'var(--color-syntax-string)' },
     { tag: tags.number, color: 'var(--color-syntax-number)' },
     { tag: tags.atom, color: 'var(--color-syntax-atom)' },
     { tag: tags.bool, color: 'var(--color-syntax-bool)' },
-    { tag: tags.labelName, color: 'var(--color-syntax-label)' },
     { tag: tags.operator, color: 'var(--color-syntax-operator)' },
     { tag: tags.punctuation, color: 'var(--color-syntax-punctuation)' },
     { tag: tags.comment, color: 'var(--color-syntax-comment)' },

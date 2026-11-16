@@ -1,1 +1,1 @@
-0cb6341299229f739b5090be93528bb4f170d855
+{"commit":"0cb6341299229f739b5090be93528bb4f170d855","patches":[{"file":"packages/mini/krill-parser.js","after":"var peg$r6 = /^[#\\--.0-9A-Z\\^-_a-z~","insert":"\\u00A9\\u00AE\\u200D\\u2010-\\u2027\\u203C\\u2049\\u20E3\\u2100-\\u2BFF\\uFE0E\\uFE0F\\uD800-\\uDFFF"},{"file":"packages/mini/krill.pegjs","after":"unicode_letter / [0-9~","insert":"\\u00A9\\u00AE\\u200D\\u2010-\\u2027\\u203C\\u2049\\u20E3\\u2100-\\u2BFF\\uFE0E\\uFE0F\\uD800-\\uDFFF"}]}

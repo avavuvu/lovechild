@@ -1,5 +1,5 @@
 import type { Image } from '../image'
-import type { Feedback, Media, Operation, Select, Step, Text } from '../operation'
+import type { Capture, Feedback, Media, Operation, Select, Step, Text } from '../operation'
 import { createCache } from './cache'
 import type { Pass, Target } from './graph'
 import { definitions, getFunctionName, type Shape } from '../steps'
@@ -15,7 +15,9 @@ export interface Resources {
     declareUniforms: (step: Step | Select) => ReadonlyArray<Declared>
     getMedia: (operation: Media | Text) => number
     getBuffer: (feedback: Feedback) => number
+    getCaptureBuffer: (capture: Capture, scope: Scope) => number
     getTrackLoop: (name: string) => Feedback
+    findTrackLoop: (operation: Operation) => Feedback | undefined
 }
 
 const vectorTypes: Record<Shape, string> = { scalar: 'float', xy: 'vec2', rgb: 'vec3', rgba: 'vec4' }
@@ -110,7 +112,8 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
             throw new Error('previous() must be inside a track')
         }
 
-        return shader.sampleBuffer(resources.getBuffer(loop), 'previous', coordinate)
+        const frame = shader.sampleBuffer(resources.getBuffer(loop), 'previous', coordinate)
+        return shader.declareVariable('vec4', `vec4(${frame}.rgb * ${frame}.a, 1.0)`)
     }
 
     const emitFeedback = (operation: Feedback, coordinate: string) => {
@@ -121,6 +124,26 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
         }
 
         return emitOperation(operation.input, coordinate, operation)
+    }
+
+    const emitCapture = (operation: Capture, coordinate: string, scope: Scope) => {
+        const buffer = resources.getCaptureBuffer(operation, scope)
+        const isOwnPass = operation === root && target.kind === 'buffer' && target.index === buffer
+
+        if (!isOwnPass) {
+            return shader.sampleBuffer(buffer, 'current', coordinate)
+        }
+
+        const gate = emitOperation(operation.gate, coordinate, scope)
+        const amount = shader.declareVariable('float', `max(isFirstFrame, clamp(${gate}.r, 0.0, 1.0))`)
+        const held = shader.sampleBuffer(buffer, 'previous', coordinate)
+        const result = shader.declareResult()
+        shader.addStatement(`if (${amount} > 0.0) {`)
+        cache.runIsolated(() => shader.addStatement(`    ${result} = mix(${held}, ${emitOperation(operation.input, coordinate, scope)}, ${amount});`))
+        shader.addStatement(`} else {`)
+        shader.addStatement(`    ${result} = ${held};`)
+        shader.addStatement('}')
+        return result
     }
 
     const emitStep = (operation: Operation, coordinate: string, scope: Scope): string => {
@@ -155,17 +178,20 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
                 return shader.sampleMedia(resources.getMedia(operation), coordinate)
             }
             case 'text': {
-                const mask = shader.sampleMedia(resources.getMedia(operation), coordinate)
+                const { glyph, outline } = shader.sampleText(resources.getMedia(operation), coordinate)
                 const fill = emitOperation(operation.fill, coordinate, scope)
                 const stroke = emitOperation(operation.stroke, coordinate, scope)
                 shader.useHelper('paintText')
-                return shader.declareVariable('vec4', `paintText(${mask}, ${fill}, ${stroke})`)
+                return shader.declareVariable('vec4', `paintText(${glyph}, ${outline}, ${fill}, ${stroke})`)
             }
             case 'previous': {
                 return emitPrevious(operation.track, coordinate, scope)
             }
             case 'feedback': {
                 return emitFeedback(operation, coordinate)
+            }
+            case 'capture': {
+                return emitCapture(operation, coordinate, scope)
             }
         }
     }
@@ -178,7 +204,11 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
             return cached
         }
 
-        const variable = emitStep(operation, coordinate, scope)
+        const loop = resources.findTrackLoop(operation)
+        const isOwnLoop = operation === root && owner === loop
+        const variable = loop !== undefined && !isOwnLoop && coordinate === baseCoordinate
+            ? shader.sampleBuffer(resources.getBuffer(loop), 'current', coordinate)
+            : emitStep(operation, coordinate, scope)
         cache.storeVariable(operation, key, variable)
         return variable
     }

@@ -30,7 +30,9 @@
   --color-red: #d00000;
   --color-orange: #a05a00;
 
+  color-scheme: light;
   --color-primary: var(--color-blue);
+  --color-on-accent: var(--color-background);
   --color-border: var(--color-black);
   --color-background: var(--color-white);
   --color-foreground: var(--color-black);
@@ -50,19 +52,19 @@
   --color-sound: #e0325f;
   --color-text: #b3694d;
   --color-neutral: var(--color-syntax-foreground);
+  --color-image-quiet: color-mix(in oklch, var(--color-image) 50%, var(--color-syntax-variable));
+  --color-text-quiet: color-mix(in oklch, var(--color-text) 50%, var(--color-syntax-variable));
+  --color-sound-quiet: color-mix(in oklch, var(--color-sound) 50%, var(--color-syntax-variable));
+  --color-neutral-quiet: color-mix(in oklch, var(--color-neutral) 50%, var(--color-syntax-variable));
 
   --color-syntax-foreground: var(--color-blue);
   --color-syntax-keyword: #ff5792;
   --color-syntax-variable: #0c006b;
-  --color-syntax-definition: #0095a8;
-  --color-syntax-special-variable: #5842ff;
-  --color-syntax-property: #0094f0;
   --color-syntax-string: #00b368;
   --color-syntax-pattern-string: #e64100;
   --color-syntax-number: #5842ff;
   --color-syntax-atom: #5842ff;
   --color-syntax-bool: #5842ff;
-  --color-syntax-label: #ff5792;
   --color-syntax-operator: #ff5792;
   --color-syntax-punctuation: #7060eb;
   --color-syntax-comment: var(--color-muted);
@@ -77,46 +79,46 @@
   --border: 1px solid var(--color-border);
 }
 
-.dark {
-  --color-background: transparent;
-  --color-muted: #7d8799;
-  --color-caret: #ffcc00;
-  --color-selection: rgba(128, 203, 196, 0.5);
-  --color-selection-match: #036dd626;
-  --color-line-background: #22222299;
-  --color-gutter: #8a919966;
-  --color-matching-bracket: #ffffff33;
-  --color-warning: #ffaa00;
-  --color-warning-line: rgba(255, 170, 0, 0.2);
-  --color-error-line: rgba(255, 85, 85, 0.3);
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
-  --color-image: #4fd6be;
-  --color-sound: #ff757f;
-  --color-text: #f78c6c;
-  --color-neutral: var(--color-syntax-foreground);
+  --color-blue: #8fb0ff;
+  --color-red: #ff5f6d;
+  --color-orange: #ffaa33;
 
-  --color-syntax-foreground: #fff;
-  --color-syntax-keyword: #c792ea;
-  --color-syntax-variable: #c792ea;
-  --color-syntax-definition: #82aaff;
-  --color-syntax-special-variable: #eeffff;
-  --color-syntax-property: #c792ea;
-  --color-syntax-string: #c3e88d;
-  --color-syntax-pattern-string: #ffcb6b;
-  --color-syntax-number: #c3e88d;
-  --color-syntax-atom: #f78c6c;
-  --color-syntax-bool: #89ddff;
-  --color-syntax-label: #89ddff;
-  --color-syntax-operator: #89ddff;
-  --color-syntax-punctuation: #82aaff;
-  --color-syntax-comment: var(--color-muted);
-  --color-syntax-type: #c3e88d;
-  --color-syntax-class: #decb6b;
-  --color-syntax-meta: #ffcb6b;
-  --color-syntax-invalid: #fff;
-  --color-syntax-bracket-0: #179fff;
-  --color-syntax-bracket-1: #da70d6;
-  --color-syntax-bracket-2: #ffd700;
+  --color-border: var(--color-foreground);
+  --color-background: #141414;
+  --color-foreground: #ededed;
+  --color-muted: #8a87a8;
+  --color-caret: #9d8cff;
+  --color-selection: rgba(157, 140, 255, 0.3);
+  --color-selection-match: rgba(157, 140, 255, 0.15);
+  --color-line-background: rgba(20, 20, 20, 0.75);
+  --color-gutter: #e4e0ff59;
+  --color-matching-bracket: #e4e0ff26;
+  --color-warning-line: rgba(255, 170, 51, 0.18);
+  --color-error-line: rgba(255, 95, 109, 0.2);
+
+  --color-image: #3cc9bb;
+  --color-sound: #ff6b8f;
+  --color-text: #e09a7c;
+
+  --color-syntax-keyword: #ff7aa8;
+  --color-syntax-variable: #e4e0ff;
+  --color-syntax-string: #4fd99a;
+  --color-syntax-pattern-string: #ff8a5c;
+  --color-syntax-number: #a99bff;
+  --color-syntax-atom: #a99bff;
+  --color-syntax-bool: #a99bff;
+  --color-syntax-operator: #ff7aa8;
+  --color-syntax-punctuation: #9d91f5;
+  --color-syntax-type: #e09a7c;
+  --color-syntax-class: #e09a7c;
+  --color-syntax-meta: #ff8a5c;
+  --color-syntax-invalid: #ff7050;
+  --color-syntax-bracket-0: #5cbcff;
+  --color-syntax-bracket-1: #e07ae0;
+  --color-syntax-bracket-2: #e0b84a;
 }
 
 .cm-editor {

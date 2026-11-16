@@ -105,7 +105,7 @@ quote = '"' / "'"
 
 // single step definition (e.g bd)
 step_char "a letter, a number, \"-\", \"#\", \".\", \"^\", \"_\"" = 
-  unicode_letter / [0-9~] / "-" / "#" / "." / "^" / "_"
+  unicode_letter / [0-9~\u00A9\u00AE\u200D\u2010-\u2027\u203C\u2049\u20E3\u2100-\u2BFF\uFE0E\uFE0F\uD800-\uDFFF] / "-" / "#" / "." / "^" / "_"
 
 step = ws chars:step_char+ ws !{ const s = chars.join(""); return (s === ".") || (s === "_") } { return new AtomStub(chars.join("")) }
 

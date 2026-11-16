@@ -27,6 +27,9 @@ export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
         case 'combine': {
             return [operation.input, operation.other, ...getParameterOperations(operation.parameters)]
         }
+        case 'capture': {
+            return [operation.input, operation.gate]
+        }
         case 'select': {
             return [...operation.options, ...getParameterOperations(operation.parameters)]
         }
@@ -74,7 +77,8 @@ const canShowImage = (operation: Operation, tracks: ReadonlyMap<string, Image>, 
         case 'coordinate':
         case 'split':
         case 'swizzle':
-        case 'feedback': {
+        case 'feedback':
+        case 'capture': {
             return canShowImage(operation.input, tracks, visiting)
         }
     }
@@ -82,4 +86,78 @@ const canShowImage = (operation: Operation, tracks: ReadonlyMap<string, Image>, 
 
 export const isEmptyLoop = (image: Image, tracks: ReadonlyMap<string, Image>, name?: string) => {
     return usesPrevious(image.operation) && !canShowImage(image.operation, tracks, new Set(name === undefined ? [] : [name]))
+}
+
+const transparentColors: ReadonlySet<string> = new Set(['luma', 'opacity', 'channels'])
+
+const transparentSources: ReadonlySet<string> = new Set(['empty', 'paint'])
+
+const eitherOpaqueCombines: ReadonlySet<string> = new Set(['add', 'max', 'diff', 'layer', 'screen'])
+
+const bothOpaqueCombines: ReadonlySet<string> = new Set(['mult', 'min', 'blend'])
+
+const isOpaqueAlpha = (argument: Argument | undefined): boolean => {
+    if (argument === undefined || argument === 1) {
+        return true
+    }
+
+    return isImage(argument) && isOpaque(argument.operation)
+}
+
+const isOpaqueSource = (operation: Extract<Operation, { kind: 'source' }>): boolean => {
+    if (transparentSources.has(operation.name)) {
+        return false
+    }
+
+    if (operation.name === 'solid') {
+        const [color] = operation.parameters
+        return Array.isArray(color) ? color[3] === 1 : typeof color === 'number' || isOpaqueAlpha(color)
+    }
+
+    if (operation.name === 'hsv' || operation.name === 'oklch') {
+        return operation.parameters[3] === undefined || operation.parameters[3] === 1
+    }
+
+    return true
+}
+
+export const isOpaque = (operation: Operation): boolean => {
+    switch (operation.kind) {
+        case 'source': {
+            return isOpaqueSource(operation)
+        }
+        case 'media':
+        case 'text': {
+            return false
+        }
+        case 'previous': {
+            return true
+        }
+        case 'coordinate':
+        case 'split':
+        case 'feedback':
+        case 'capture': {
+            return isOpaque(operation.input)
+        }
+        case 'swizzle': {
+            return operation.channels.length < 4 || ('aw'.includes(operation.channels[3]) && isOpaque(operation.input))
+        }
+        case 'color': {
+            return !transparentColors.has(operation.name) && isOpaque(operation.input)
+        }
+        case 'combine': {
+            if (eitherOpaqueCombines.has(operation.name)) {
+                return isOpaque(operation.input) || isOpaque(operation.other)
+            }
+
+            if (bothOpaqueCombines.has(operation.name)) {
+                return isOpaque(operation.input) && isOpaque(operation.other)
+            }
+
+            return operation.name !== 'mask' && operation.name !== 'key' && isOpaque(operation.input)
+        }
+        case 'select': {
+            return operation.options.every(isOpaque)
+        }
+    }
 }

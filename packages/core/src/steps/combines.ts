@@ -6,7 +6,7 @@ export const combines = {
         shapes: [],
         glsl: `
 vec4 add(vec4 color, vec4 other) {
-    return color + other;
+    return vec4(color.rgb + other.rgb, clamp(color.a + other.a, 0.0, 1.0));
 }`,
     },
     sub: {
@@ -14,7 +14,7 @@ vec4 add(vec4 color, vec4 other) {
         shapes: [],
         glsl: `
 vec4 sub(vec4 color, vec4 other) {
-    return color - other;
+    return vec4(color.rgb - other.rgb, color.a);
 }`,
     },
     mult: {
@@ -30,7 +30,7 @@ vec4 mult(vec4 color, vec4 other) {
         shapes: [],
         glsl: `
 vec4 div(vec4 color, vec4 other) {
-    return color / other;
+    return vec4(color.rgb / other.rgb, color.a);
 }`,
     },
     min: {
@@ -57,7 +57,7 @@ vec4 maxStep(vec4 color, vec4 other) {
         functionName: 'powStep',
         glsl: `
 vec4 powStep(vec4 color, vec4 other) {
-    return pow(max(color, 0.0), other);
+    return vec4(pow(max(color.rgb, 0.0), other.rgb), color.a);
 }`,
     },
     mod: {
@@ -91,7 +91,17 @@ vec4 layer(vec4 color, vec4 other) {
         glsl: `
 vec4 mask(vec4 color, vec4 other) {
     float amount = dot(other.rgb, vec3(0.2125, 0.7154, 0.0721));
-    return vec4(color.rgb * amount, color.a * amount);
+    return vec4(color.rgb, color.a * amount);
+}`,
+    },
+    key: {
+        parameters: [{ name: 'tolerance', default: 0.3 }],
+        shapes: ['scalar'],
+        glsl: `
+vec4 key(vec4 color, vec4 other, float tolerance) {
+    const float softness = 0.1;
+    float amount = smoothstep(tolerance, tolerance + softness, distance(color.rgb, other.rgb));
+    return vec4(color.rgb, color.a * amount);
 }`,
     },
     blend: {

@@ -1,4 +1,4 @@
-export type Helper = 'sampleTexture' | 'sampleFeedback' | 'paintText' | 'luminance' | 'hsv' | 'oklab' | 'simplexNoise'
+export type Helper = 'sampleTexture' | 'sampleFeedback' | 'sampleText' | 'paintText' | 'luminance' | 'hsv' | 'oklab' | 'simplexNoise'
 
 export const helpers: Record<Helper, string> = {
     sampleTexture: `
@@ -14,12 +14,21 @@ vec4 sampleFeedback(sampler2D image, vec2 size, vec2 coordinate) {
     vec2 position = (coordinate - 0.5) * min(size.x, size.y) / size + 0.5;
     return texture(image, fract(position));
 }`,
+    sampleText: `
+vec4 sampleText(sampler2D image, vec2 size, vec2 coordinate, float section) {
+    vec2 area = vec2(size.x, size.y * 0.5);
+    vec2 position = (coordinate - 0.5) * min(area.x, area.y) / area + 0.5;
+    if (any(lessThan(position, vec2(0.0))) || any(greaterThan(position, vec2(1.0)))) {
+        return vec4(0.0);
+    }
+    return texture(image, vec2(position.x, section * 0.5 + position.y * 0.5));
+}`,
     paintText: `
-vec4 paintText(vec4 mask, vec4 fill, vec4 stroke) {
-    float fillAmount = mask.r * fill.a;
-    float strokeAmount = mask.g * stroke.a;
+vec4 paintText(vec4 glyph, vec4 outline, vec4 fill, vec4 stroke) {
+    float fillAmount = glyph.a * fill.a;
+    float strokeAmount = outline.a * stroke.a * (1.0 - fillAmount);
     float alpha = fillAmount + strokeAmount;
-    return alpha > 0.0 ? vec4((fill.rgb * fillAmount + stroke.rgb * strokeAmount) / alpha, alpha) : vec4(0.0);
+    return alpha > 0.0 ? vec4((glyph.rgb * fill.rgb * fillAmount + stroke.rgb * strokeAmount) / alpha, alpha) : vec4(0.0);
 }`,
     luminance: `
 float luminance(vec4 color) {

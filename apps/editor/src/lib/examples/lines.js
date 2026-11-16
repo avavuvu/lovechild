@@ -16,7 +16,7 @@ $hh: s("hh*8")
   .dec(0.02)
   .dist(4)
 
-$: shape(4)
+const bars = shape(4)
   .scale(0.2)
   .scaleX(
       $sd.hits(0.03).range(1, 19))
@@ -35,3 +35,4 @@ $: shape(4)
   .rotate(sine)
   .preview()
   .sometimes(x => x.thresh().colorama(3))
+  .screen(bars)

@@ -5,11 +5,11 @@
     import { page } from '$app/state'
     import Graph from '$lib/docs/Graph.svelte'
     import QuickReference from '$lib/docs/QuickReference.svelte'
-    import type { Display } from '$lib/editor/displays'
     import type { Editor } from '$lib/editor/editor'
     import type { LineMessage } from '$lib/editor/lines'
     import type { Output } from '$lib/editor/output'
     import Settings from '$lib/editor/Settings.svelte'
+    import { loadSettings, resolutionScales, settings } from '$lib/editor/preferences.svelte'
     import { readSavedCode, saveCode } from '$lib/editor/storage'
     import type { Viewer } from '$lib/editor/viewer'
     import { examples, pickExampleName } from '$lib/examples/examples'
@@ -40,7 +40,6 @@
     let locateError: ((error: unknown) => ReadonlyArray<Location>) | undefined
     let isMuted = $state(true)
     let isPanelOpen = $state(true)
-    let display: Display = $state('code')
     let output: Output = $state.raw({ code: '', transpiled: '', graph: undefined })
     let notices: Array<Notice> = $state([])
     let warnings: Array<Warning> = []
@@ -188,6 +187,7 @@
 
     onMount(() => {
         let isMounted = true
+        loadSettings()
 
         Promise.all([
             import('@lovechild/strudel'),
@@ -208,7 +208,9 @@
                 scope: { slider, sliderWithID },
             })
 
-            editor = createEditor({ parent: container, onEvaluate: evaluateEditor, onStop: player.stop })
+            runtime.setResolution(resolutionScales[settings.resolution])
+
+            editor = createEditor({ parent: container, onEvaluate: evaluateEditor, onStop: player.stop, shouldFormat: () => settings.format === 'on' })
             viewer = createViewer({ parent: viewerContainer, onEvaluate: () => editor?.evaluate(), onStop: player.stop })
 
             const code = readSavedCode() ?? examples.get(pickExampleName()) ?? ''
@@ -238,11 +240,15 @@
     })
 
     $effect(() => {
-        if (display === 'code') {
+        runtime?.setResolution(resolutionScales[settings.resolution])
+    })
+
+    $effect(() => {
+        if (settings.display === 'code') {
             return
         }
 
-        const shown = display
+        const shown = settings.display
         let isCurrent = true
 
         import('$lib/editor/output').then(({ formatOutput }) => formatOutput(shown, output)).then((code) => {
@@ -268,13 +274,13 @@
 
 {#snippet panel()}
     <QuickReference />
-    <Settings bind:display />
+    <Settings />
 {/snippet}
 
 <canvas class="stage" bind:this={canvas}></canvas>
 <main hidden={!isCodePage} class:narrow={isCodePage && isPanelOpen}>
-    <div bind:this={container} hidden={display !== 'code'}></div>
-    <div bind:this={viewerContainer} hidden={display === 'code'}></div>
+    <div bind:this={container} hidden={settings.display !== 'code'}></div>
+    <div bind:this={viewerContainer} hidden={settings.display === 'code'}></div>
 </main>
 <Graph current={page.url.pathname} isVisible={isGraphPage} isInteractive={isExplorePage} search={isExplorePage ? search : ''} focus={isExplorePage ? searchFocus : undefined} />
 {@render children()}

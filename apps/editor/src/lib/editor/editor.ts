@@ -13,6 +13,7 @@ import type { Hap } from '@strudel/core'
 import type { Widget } from '@strudel/transpiler'
 import { trackMarkers } from './tracks'
 import { bracketColors } from './brackets'
+import { formatView } from './format'
 import { createKeyHandler } from './keys'
 import { errorLines, warningLines, type LineMessage } from './lines'
 import { theme } from './theme'
@@ -23,6 +24,7 @@ export interface EditorOptions {
     parent: HTMLElement
     onEvaluate: (code: string) => void
     onStop: () => void
+    shouldFormat?: () => boolean
 }
 
 export interface Editor {
@@ -89,8 +91,12 @@ const remeasureOnResize = ViewPlugin.define((view) => {
     return { destroy: () => observer.disconnect() }
 })
 
-export const createEditor = ({ parent, onEvaluate, onStop }: EditorOptions): Editor => {
+export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => false }: EditorOptions): Editor => {
     const evaluate = (view: EditorView) => {
+        if (shouldFormat()) {
+            formatView(view)
+        }
+
         flash(view)
         onEvaluate(view.state.doc.toString())
     }

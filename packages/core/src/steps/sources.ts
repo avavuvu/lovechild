@@ -104,6 +104,52 @@ vec4 resolution(vec2 coordinate) {
     return vec4(areaSize, 0.0, 1.0);
 }`,
     },
+    ticks: {
+        parameters: [{ name: 'rate', default: 4 }, { name: 'offset', default: 0 }],
+        isInternal: true,
+        shapes: ['scalar', 'scalar'],
+        glsl: `
+vec4 ticks(vec2 coordinate, float rate, float offset) {
+    float isTick = float(floor(time * rate + offset) != floor(previousTime * rate + offset));
+    return vec4(vec3(isTick), 1.0);
+}`,
+    },
+    onsets: {
+        parameters: [{ name: 'rhythm' }],
+        isInternal: true,
+        isOnset: true,
+        shapes: ['scalar'],
+        glsl: `
+vec4 onsets(vec2 coordinate, float isOnset) {
+    return vec4(vec3(isOnset), 1.0);
+}`,
+    },
+    catchUp: {
+        parameters: [{ name: 'duration', default: 0.25 }],
+        isInternal: true,
+        shapes: ['scalar'],
+        glsl: `
+vec4 catchUp(vec2 coordinate, float duration) {
+    float amount = 1.0 - exp(-abs(time - previousTime) / max(duration, 0.0001));
+    return vec4(vec3(amount), 1.0);
+}`,
+    },
+    fps: {
+        parameters: [{ name: 'rate', default: 24 }],
+        shapes: ['scalar'],
+        glsl: `
+vec4 fps(vec2 coordinate, float rate) {
+    return vec4(vec3(rate / max(cps, 0.0001)), 1.0);
+}`,
+    },
+    seconds: {
+        parameters: [{ name: 'duration', default: 1 }],
+        shapes: ['scalar'],
+        glsl: `
+vec4 seconds(vec2 coordinate, float duration) {
+    return vec4(vec3(duration * cps), 1.0);
+}`,
+    },
     empty: {
         parameters: [],
         isInternal: true,

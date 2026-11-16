@@ -1,4 +1,4 @@
-import type { Amount, ColorName, CombineName, CoordinateName, Keyword, Operation, Parameter, Scalar } from './operation'
+import type { Amount, ColorName, CombineName, CoordinateName, Keyword, Operation, Paint, Parameter, Scalar, SourceName } from './operation'
 import { colorNames, combineNames, coordinateNames, createArguments, splitNames } from './steps'
 
 type Values = ReadonlyArray<Parameter | undefined>
@@ -144,6 +144,10 @@ export class Image {
         return this.#transformColor('thresh', [threshold])
     }
 
+    opacity(amount?: Amount) {
+        return this.#transformColor('opacity', [amount])
+    }
+
     luma(threshold?: Amount) {
         return this.#transformColor('luma', [threshold])
     }
@@ -236,6 +240,12 @@ export class Image {
         return this.#combineWith('screen', other, [])
     }
 
+    key(color?: Paint, tolerance?: Amount) {
+        const paint = color ?? '#00ff00'
+        const other = isImage(paint) ? paint : this.#createSource('paint', [paint, paint, paint, paint])
+        return this.#combineWith('key', other, [tolerance])
+    }
+
     blend(other: Image, amount?: Amount) {
         return this.#combineWith('blend', other, [amount])
     }
@@ -257,8 +267,41 @@ export class Image {
         return this.move(red.sub(green).mult(pixel), green.sub(blue).mult(pixel))
     }
 
+    capture(gate?: Amount | boolean) {
+        const amount = typeof gate === 'boolean' ? Number(gate) : gate ?? 0
+        return this.#captureWith(this.#fillWith(amount, 1).thresh(0.5))
+    }
+
+    posteriseTime(rate?: Amount, offset?: Amount) {
+        return this.#captureWith(this.#createSource('ticks', [rate, offset]))
+    }
+
+    posterizeTime(rate?: Amount, offset?: Amount) {
+        return this.posteriseTime(rate, offset)
+    }
+
+    stutter(rhythm?: Scalar) {
+        if (rhythm === undefined || typeof rhythm === 'number') {
+            return this.posteriseTime(rhythm)
+        }
+
+        return this.#captureWith(this.#createSource('onsets', [rhythm]))
+    }
+
+    lag(duration?: Amount) {
+        return this.#captureWith(this.#createSource('catchUp', [duration]))
+    }
+
     hush() {
         return new Image({ kind: 'source', name: 'empty', parameters: [] })
+    }
+
+    #captureWith(gate: Image) {
+        return new Image({ kind: 'capture', input: this.operation, gate: gate.operation })
+    }
+
+    #createSource(name: SourceName, values: Values) {
+        return new Image({ kind: 'source', name, parameters: createArguments(name, values) })
     }
 
     #transformCoordinate(name: CoordinateName, values: Values) {

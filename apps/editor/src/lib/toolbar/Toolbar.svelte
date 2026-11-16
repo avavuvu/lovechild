@@ -98,6 +98,6 @@
 
     a.selected {
         background: var(--color-primary);
-        color: var(--color-white);
+        color: var(--color-on-accent);
     }
 </style>

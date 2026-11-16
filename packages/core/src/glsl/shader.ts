@@ -17,8 +17,10 @@ export const createShader = () => {
         statements.push(statement)
     }
 
-    const declareVariable = (type: 'vec2' | 'vec4', expression: string) => {
-        const name = (type === 'vec2' ? 'coordinate' : 'color') + statements.length
+    const variablePrefixes = { float: 'amount', vec2: 'coordinate', vec4: 'color' }
+
+    const declareVariable = (type: 'float' | 'vec2' | 'vec4', expression: string) => {
+        const name = variablePrefixes[type] + statements.length
         statements.push(`${type} ${name} = ${expression};`)
         return name
     }
@@ -53,6 +55,14 @@ export const createShader = () => {
         return declareVariable('vec4', `sampleFeedback(${name}, bufferResolution, ${coordinate})`)
     }
 
+    const sampleText = (index: number, coordinate: string) => {
+        media.add(index)
+        usedHelpers.add('sampleText')
+        const glyph = declareVariable('vec4', `sampleText(media${index}, media${index}Size, ${coordinate}, 1.0)`)
+        const outline = declareVariable('vec4', `sampleText(media${index}, media${index}Size, ${coordinate}, 0.0)`)
+        return { glyph, outline }
+    }
+
     const sampleMedia = (index: number, coordinate: string) => {
         media.add(index)
         usedHelpers.add('sampleTexture')
@@ -72,6 +82,9 @@ export const createShader = () => {
                 'uniform vec2 areaSize;',
                 'uniform vec2 origin;',
                 'uniform float time;',
+                'uniform float previousTime;',
+                'uniform float cps;',
+                'uniform float isFirstFrame;',
                 ...(inputs.size > 0 ? ['uniform vec2 bufferResolution;'] : []),
                 ...Array.from(uniforms, (name) => `uniform float ${name};`),
                 ...Array.from(inputs.keys(), (name) => `uniform sampler2D ${name};`),
@@ -84,7 +97,7 @@ export const createShader = () => {
                 'void main() {',
                 '    vec2 ' + baseCoordinate + ' = (gl_FragCoord.xy - origin - 0.5 * areaSize) / min(areaSize.x, areaSize.y) + 0.5;',
                 ...statements.map((statement) => `    ${statement}`),
-                '    fragmentColor = ' + output + ';',
+                '    fragmentColor = ' + (target.kind === 'buffer' ? output : `vec4(${output}.rgb * ${output}.a, 1.0)`) + ';',
                 '}',
             ],
         ]
@@ -94,5 +107,5 @@ export const createShader = () => {
         return { source, target, inputs: Array.from(inputs.values()), media: mediaIndexes }
     }
 
-    return { addStatement, declareVariable, declareResult, useUniform, useHelper, useFunction, sampleBuffer, sampleMedia, buildPass }
+    return { addStatement, declareVariable, declareResult, useUniform, useHelper, useFunction, sampleBuffer, sampleMedia, sampleText, buildPass }
 }

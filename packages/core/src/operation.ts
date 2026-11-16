@@ -56,10 +56,13 @@ export type Operation =
     | { kind: 'text', settings: TextSettings, fill: Operation, stroke: Operation }
     | { kind: 'previous', track?: string }
     | { kind: 'feedback', input: Operation }
+    | { kind: 'capture', input: Operation, gate: Operation }
 
 export type Step = Extract<Operation, { name: OperationName }>
 
 export type Feedback = Extract<Operation, { kind: 'feedback' }>
+
+export type Capture = Extract<Operation, { kind: 'capture' }>
 
 export type Media = Extract<Operation, { kind: 'media' }>
 

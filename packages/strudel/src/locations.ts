@@ -19,7 +19,7 @@ export interface Sketch {
     texts: ReadonlyArray<Text>
 }
 
-const isNode = (value: unknown): value is AnyNode => typeof value === 'object' && value !== null && 'type' in value
+export const isNode = (value: unknown): value is AnyNode => typeof value === 'object' && value !== null && 'type' in value
 
 export const visit = (node: AnyNode, enter: (node: AnyNode) => void) => {
     enter(node)

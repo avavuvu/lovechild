@@ -2,7 +2,7 @@ import type { MediaName, TextSettings, Value } from '../operation'
 
 export type Frame = 'current' | 'previous'
 
-export interface Uniform { name: string, value: Value, encode: (value: unknown) => number, colorChannel?: number }
+export interface Uniform { name: string, value: Value, encode: (value: unknown) => number, colorChannel?: number, isOnset?: boolean }
 
 export interface BufferInput { name: string, buffer: number, frame: Frame }
 

@@ -58,6 +58,7 @@ export interface Runtime {
     unmute: () => Promise<void>
     mute: () => Promise<void>
     stop: () => void
+    setResolution: (scale: number) => void
     destroy: () => void
 }
 
@@ -267,7 +268,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
                 haps.push(...readHaps(() => text.update(time, canvas.width, canvas.height)).map(fillWhole))
             }
 
-            renderer.draw(shown.graph, shown.reader.values, time, shown.previews, shown.media)
+            renderer.draw(shown.graph, shown.reader.values, time, scheduler.cps, shown.previews, shown.media)
         }
 
         updatePeeks(time)
@@ -332,6 +333,7 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
             cleanupDraw(true)
             options.onFrame(0, [])
         },
+        setResolution: (scale) => renderer.setScale(scale),
         destroy: () => {
             cancelAnimationFrame(frame)
             document.removeEventListener(logEvent, readLog)

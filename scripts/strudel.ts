@@ -12,8 +12,6 @@ const linkedPackages = ['core', 'mini', 'tonal', 'transpiler', 'webaudio', 'draw
 
 const sparsePatterns = ['/packages/**/*.mjs', '/pnpm-workspace.yaml', ...linkedPackages.map((name) => `/packages/${name}/`)]
 
-const isCurrent = () => existsSync(marker) && readFileSync(marker, 'utf8') === commit
-
 const runGit = (...values: Array<string>) => {
     execFileSync('git', values, { cwd: folder, stdio: 'inherit' })
 }
@@ -61,6 +59,30 @@ const resolveCatalogs = () => {
     }
 }
 
+const emojiAndSymbols = String.raw`\u00A9\u00AE\u200D\u2010-\u2027\u203C\u2049\u20E3\u2100-\u2BFF\uFE0E\uFE0F\uD800-\uDFFF`
+
+const patches = [
+    { file: 'packages/mini/krill-parser.js', after: String.raw`var peg$r6 = /^[#\--.0-9A-Z\^-_a-z~`, insert: emojiAndSymbols },
+    { file: 'packages/mini/krill.pegjs', after: 'unicode_letter / [0-9~', insert: emojiAndSymbols },
+]
+
+const applyPatches = () => {
+    for (const { file, after, insert } of patches) {
+        const path = join(folder, file)
+        const parts = readFileSync(path, 'utf8').split(after)
+
+        if (parts.length !== 2) {
+            throw new Error(`${file} should contain ${after} exactly once`)
+        }
+
+        writeFileSync(path, parts.join(after + insert))
+    }
+}
+
+const version = JSON.stringify({ commit, patches })
+
+const isCurrent = () => existsSync(marker) && readFileSync(marker, 'utf8') === version
+
 if (!isCurrent()) {
     rmSync(folder, { recursive: true, force: true })
     mkdirSync(folder, { recursive: true })
@@ -70,6 +92,7 @@ if (!isCurrent()) {
     runGit('sparse-checkout', 'set', '--no-cone', ...sparsePatterns)
     runGit('checkout', '--quiet', 'FETCH_HEAD')
     resolveCatalogs()
+    applyPatches()
     rmSync(join(folder, '.git'), { recursive: true, force: true })
-    writeFileSync(marker, commit)
+    writeFileSync(marker, version)
 }
