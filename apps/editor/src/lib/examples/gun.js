@@ -18,7 +18,7 @@ $: note("<d2 d2 a1 c2>")
   .sustain(0)
   .room(0.5)
 
-const gun = shape(4)
+let gun = shape(4)
   .scale(4, 0.02)
   .moveX(-2)
   .rotate(saw.add(sine2))

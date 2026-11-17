@@ -4,7 +4,7 @@
 //https://flordefuego.github.io/
 // ported from the Hydra original at https://hydra.ojack.xyz
 
-const cells = voronoi(8, 1 / 31.4)
+let cells = voronoi(8, 1 / 31.4)
   .preview()
 
 $: cells

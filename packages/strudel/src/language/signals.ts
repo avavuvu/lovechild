@@ -1,5 +1,10 @@
 import { Hap, Pattern, register, signal, TimeSpan, type HitLength } from '@strudel/core'
 
+const smoothValue = (value: number) => {
+    const clamped = Math.min(Math.max(value, 0), 1)
+    return clamped * clamped * (3 - 2 * clamped)
+}
+
 const findGaps = (span: TimeSpan, events: ReadonlyArray<Hap>): Array<Hap<number>> => {
     if (events.length === 0) {
         return [new Hap(undefined, span, 0, {})]
@@ -50,17 +55,15 @@ const fadeAfterOnsets = (length: number, pattern: Pattern) => signal((time) => {
 
 const defaultHitLength = 0.2
 
-register('hits', (length: number, pattern: Pattern) => length > 0 ? fadeAfterOnsets(length, pattern) : markHits(pattern))
+const registeredHits = register('hits', (length: number, pattern: Pattern) => length > 0 ? fadeAfterOnsets(length, pattern) : markHits(pattern))
+
+export const hits = (...values: ReadonlyArray<unknown>) => values.length === 1 ? registeredHits(defaultHitLength, values[0]) : registeredHits(...values)
 
 const patternedHits = Pattern.prototype.hits
 
-Object.defineProperty(Pattern.prototype, 'hits', {
-    value: function (this: Pattern, ...lengths: ReadonlyArray<HitLength>) {
-        return lengths.length > 0 ? patternedHits.call(this, ...lengths) : patternedHits.call(this, defaultHitLength)
-    },
-    configurable: true,
-    writable: true,
-})
+export const hitsMethod = function (this: Pattern, ...lengths: ReadonlyArray<HitLength>) {
+    return lengths.length > 0 ? patternedHits.call(this, ...lengths) : patternedHits.call(this, defaultHitLength)
+}
 
 const searchCycles = 8
 
@@ -112,4 +115,6 @@ const getGlideValue = (pattern: Pattern, length: number, time: number, isInclusi
     return start + (target - start) * progress
 }
 
-register('glide', (length: number, pattern: Pattern) => signal((time) => getGlideValue(pattern, length, Number(time), true, glideDepth)))
+export const glide = register('glide', (length: number, pattern: Pattern) => signal((time) => getGlideValue(pattern, length, Number(time), true, glideDepth)))
+
+export const smooth = register('smooth', (pattern: Pattern<number>) => pattern.fmap(smoothValue))

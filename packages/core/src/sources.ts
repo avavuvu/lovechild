@@ -12,6 +12,8 @@ export const polygon = shape
 
 export const paint = (color: Paint) => createSource('paint', [color, color, color, color])
 
+export const paintCallNames: ReadonlySet<string> = new Set(['solid', 'color', 'colour', 'rgb', 'xyz', 'key', 'fill', 'stroke'])
+
 export const solid = (red?: Paint, green?: Amount, blue?: Amount, alpha?: Amount) => {
     const isSingle = green === undefined && blue === undefined && alpha === undefined
 
@@ -64,7 +66,7 @@ for (const name of sourceNames) {
     }
 }
 
-export const previous = (track?: string) => new Image({ kind: 'previous', track })
+export const previous = (imageName?: string) => new Image({ kind: 'previous', imageName })
 
 export const camera = () => new Image({ kind: 'media', name: 'camera', source: '' })
 

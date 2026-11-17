@@ -5,6 +5,7 @@
         theme: 'theme',
         format: 'format on run',
         resolution: 'resolution',
+        fps: 'fps',
         display: 'display',
     }
 </script>

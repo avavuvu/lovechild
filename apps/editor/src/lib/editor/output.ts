@@ -1,8 +1,7 @@
-import { expandMiniNotation, type Graph, type Pass, type Uniform } from '@lovechild/strudel'
+import type { Graph, Pass, Uniform } from '@lovechild/strudel'
 import type { OutputDisplay } from './displays'
 
 export interface Output {
-    code: string
     transpiled: string
     graph: Graph | undefined
 }
@@ -45,11 +44,7 @@ const formatCode = async (code: string) => {
     }
 }
 
-export const formatOutput = async (display: OutputDisplay, { code, transpiled, graph }: Output) => {
-    if (display === 'functions') {
-        return formatCode(expandMiniNotation(code))
-    }
-
+export const formatOutput = async (display: OutputDisplay, { transpiled, graph }: Output) => {
     if (display === 'javascript') {
         return formatCode(transpiled)
     }

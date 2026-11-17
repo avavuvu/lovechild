@@ -8,6 +8,8 @@
     import type { Editor } from '$lib/editor/editor'
     import type { LineMessage } from '$lib/editor/lines'
     import type { Output } from '$lib/editor/output'
+    import FrameRate from '$lib/editor/FrameRate.svelte'
+    import { countFrame } from '$lib/editor/frames.svelte'
     import Settings from '$lib/editor/Settings.svelte'
     import { loadSettings, resolutionScales, settings } from '$lib/editor/preferences.svelte'
     import { readSavedCode, saveCode } from '$lib/editor/storage'
@@ -40,7 +42,7 @@
     let locateError: ((error: unknown) => ReadonlyArray<Location>) | undefined
     let isMuted = $state(true)
     let isPanelOpen = $state(true)
-    let output: Output = $state.raw({ code: '', transpiled: '', graph: undefined })
+    let output: Output = $state.raw({ transpiled: '', graph: undefined })
     let notices: Array<Notice> = $state([])
     let warnings: Array<Warning> = []
     let errors: Array<LineMessage> = []
@@ -153,7 +155,7 @@
 
         if (result) {
             editor?.showEvaluation(result)
-            output = { code, transpiled: result.transpiled, graph: result.graph }
+            output = { transpiled: result.transpiled, graph: result.graph }
         }
     }
 
@@ -202,7 +204,10 @@
             locateError = strudel.locateError
 
             runtime = strudel.createRuntime(canvas, {
-                onFrame: (time, haps) => playing?.onFrame(time, haps),
+                onFrame: (time, haps) => {
+                    countFrame(performance.now())
+                    playing?.onFrame(time, haps)
+                },
                 onWarning: showWarning,
                 onPlaybackError: showError,
                 scope: { slider, sliderWithID },
@@ -221,7 +226,7 @@
                 return
             }
 
-            player.play({ id: Symbol('background'), code, isAutomatic: true, onFrame: () => {} })
+            player.play(last ?? { id: Symbol('background'), code, isAutomatic: true, onFrame: () => {} })
         })
 
         return () => {
@@ -281,6 +286,9 @@
 <main hidden={!isCodePage} class:narrow={isCodePage && isPanelOpen}>
     <div bind:this={container} hidden={settings.display !== 'code'}></div>
     <div bind:this={viewerContainer} hidden={settings.display === 'code'}></div>
+    {#if settings.fps === 'on' && playing}
+        <FrameRate />
+    {/if}
 </main>
 <Graph current={page.url.pathname} isVisible={isGraphPage} isInteractive={isExplorePage} search={isExplorePage ? search : ''} focus={isExplorePage ? searchFocus : undefined} />
 {@render children()}

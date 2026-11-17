@@ -5,6 +5,7 @@
     "license": "AGPL-3.0-or-later",
     "exports": {
         ".": "./src/index.ts",
+        "./editor": "./src/editor/index.ts",
         "./headless": "./src/headless.ts"
     },
     "dependencies": {
@@ -16,6 +17,11 @@
         "@strudel/tonal": "workspace:*",
         "@strudel/transpiler": "workspace:*",
         "@strudel/webaudio": "workspace:*",
-        "acorn": "^8.19.0"
+        "acorn": "^8.19.0",
+        "acorn-walk": "8.3.4",
+        "culori": "4.0.2"
+    },
+    "devDependencies": {
+        "@types/culori": "4.0.1"
     }
 }

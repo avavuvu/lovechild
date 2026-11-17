@@ -1,4 +1,5 @@
-import { parse, type AnyNode, type CallExpression } from 'acorn'
+import type { AnyNode, CallExpression, Program } from 'acorn'
+import { visit } from './syntax'
 import type { Location } from './warnings'
 
 interface Call {
@@ -9,28 +10,15 @@ interface Call {
 
 interface Text {
     value: string
+    callName: string | undefined
     location: Location
 }
 
-export type Search = { call: string, given: number } | { text: string }
+export type Search = { call: string, given: number } | { text: string, calls?: ReadonlySet<string> }
 
 export interface Sketch {
     calls: ReadonlyArray<Call>
     texts: ReadonlyArray<Text>
-}
-
-export const isNode = (value: unknown): value is AnyNode => typeof value === 'object' && value !== null && 'type' in value
-
-export const visit = (node: AnyNode, enter: (node: AnyNode) => void) => {
-    enter(node)
-
-    for (const value of Object.values(node)) {
-        for (const child of Array.isArray(value) ? value : [value]) {
-            if (isNode(child)) {
-                visit(child, enter)
-            }
-        }
-    }
 }
 
 const readCall = (node: CallExpression): Call | undefined => {
@@ -52,25 +40,29 @@ const readCall = (node: CallExpression): Call | undefined => {
     return undefined
 }
 
-export const readSketch = (code: string): Sketch => {
+const readCallName = (node: AnyNode, parent: AnyNode | undefined) => {
+    if (parent?.type !== 'CallExpression' || !parent.arguments.some((argument) => argument === node)) {
+        return undefined
+    }
+
+    return readCall(parent)?.name
+}
+
+export const readSketch = (program: Program): Sketch => {
     const calls: Array<Call> = []
     const texts: Array<Text> = []
 
-    try {
-        visit(parse(code, { ecmaVersion: 2022, allowAwaitOutsideFunction: true }), (node) => {
-            const call = node.type === 'CallExpression' ? readCall(node) : undefined
+    visit(program, (node, ancestors) => {
+        const call = node.type === 'CallExpression' ? readCall(node) : undefined
 
-            if (call) {
-                calls.push(call)
-            }
+        if (call) {
+            calls.push(call)
+        }
 
-            if (node.type === 'Literal' && typeof node.value === 'string') {
-                texts.push({ value: node.value, location: { start: node.start, end: node.end } })
-            }
-        })
-    } catch {
-        return { calls: [], texts: [] }
-    }
+        if (node.type === 'Literal' && typeof node.value === 'string') {
+            texts.push({ value: node.value, callName: readCallName(node, ancestors.at(-2)), location: { start: node.start, end: node.end } })
+        }
+    })
 
     return { calls, texts }
 }
@@ -80,5 +72,8 @@ export const findLocations = (sketch: Sketch, search: Search): ReadonlyArray<Loc
         return sketch.calls.filter((call) => call.name === search.call && call.given === search.given).map((call) => call.location)
     }
 
-    return sketch.texts.filter((text) => text.value === search.text).map((text) => text.location)
+    const matches = sketch.texts.filter((text) => text.value === search.text)
+    const { calls } = search
+    const inCalls = calls ? matches.filter((text) => text.callName !== undefined && calls.has(text.callName)) : []
+    return (inCalls.length > 0 ? inCalls : matches).map((text) => text.location)
 }

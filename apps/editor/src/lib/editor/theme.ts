@@ -47,31 +47,31 @@ const layout = EditorView.theme({
     '.cm-content > canvas': {
         display: 'block',
     },
-    '.cm-gutterElement.cm-image-track, .cm-kind-image, .cm-kind-image *': {
+    '.cm-gutterElement.cm-image-block, .cm-medium-image, .cm-medium-image *': {
         color: 'var(--color-image)',
     },
-    '.cm-gutterElement.cm-sound-track, .cm-kind-sound, .cm-kind-sound *': {
+    '.cm-gutterElement.cm-sound-block, .cm-medium-sound, .cm-medium-sound *': {
         color: 'var(--color-sound)',
     },
-    '.cm-kind-text, .cm-kind-text *': {
+    '.cm-medium-text, .cm-medium-text *': {
         color: 'var(--color-text)',
     },
-    '.cm-kind-neutral, .cm-kind-neutral *': {
+    '.cm-medium-neutral, .cm-medium-neutral *': {
         color: 'var(--color-neutral)',
     },
-    '.cm-kind-image.cm-quiet, .cm-kind-image.cm-quiet *': {
+    '.cm-medium-image.cm-quiet, .cm-medium-image.cm-quiet *': {
         color: 'var(--color-image-quiet)',
     },
-    '.cm-kind-text.cm-quiet, .cm-kind-text.cm-quiet *': {
+    '.cm-medium-text.cm-quiet, .cm-medium-text.cm-quiet *': {
         color: 'var(--color-text-quiet)',
     },
-    '.cm-kind-sound.cm-quiet, .cm-kind-sound.cm-quiet *': {
+    '.cm-medium-sound.cm-quiet, .cm-medium-sound.cm-quiet *': {
         color: 'var(--color-sound-quiet)',
     },
-    '.cm-kind-neutral.cm-quiet, .cm-kind-neutral.cm-quiet *': {
+    '.cm-medium-neutral.cm-quiet, .cm-medium-neutral.cm-quiet *': {
         color: 'var(--color-neutral-quiet)',
     },
-    '.cm-track-toggle, .cm-boolean-toggle': {
+    '.cm-block-toggle, .cm-boolean-toggle': {
         appearance: 'none',
         margin: '0',
         border: 'none',
@@ -80,7 +80,7 @@ const layout = EditorView.theme({
         boxShadow: 'inset 0 0 0 2px var(--toggle-color)',
         cursor: 'pointer',
     },
-    '.cm-track-toggle:checked, .cm-boolean-toggle:checked': {
+    '.cm-block-toggle:checked, .cm-boolean-toggle:checked': {
         background: 'radial-gradient(circle closest-side, #fff 0 32%, transparent 36%) var(--toggle-color)',
     },
     '.cm-boolean-toggle': {
@@ -91,25 +91,25 @@ const layout = EditorView.theme({
         marginRight: '0.5ch',
         verticalAlign: '-0.05em',
     },
-    '.cm-lineNumbers .cm-gutterElement.cm-track-cell': {
+    '.cm-lineNumbers .cm-gutterElement.cm-block-cell': {
         padding: '0',
     },
-    '.cm-track-toggle': {
+    '.cm-block-toggle': {
         '--toggle-color': 'var(--color-caret)',
         display: 'block',
         width: '100%',
         height: '100%',
     },
-    '.cm-line.cm-muted-track, .cm-line.cm-muted-track *': {
+    '.cm-line.cm-muted-block, .cm-line.cm-muted-block *': {
         color: 'var(--color-gutter)',
     },
-    '.cm-muted-track .cm-boolean-toggle': {
+    '.cm-muted-block .cm-boolean-toggle': {
         '--toggle-color': 'var(--color-gutter)',
     },
-    '.cm-image-track .cm-track-toggle': {
+    '.cm-image-block .cm-block-toggle': {
         '--toggle-color': 'var(--color-image)',
     },
-    '.cm-sound-track .cm-track-toggle': {
+    '.cm-sound-block .cm-block-toggle': {
         '--toggle-color': 'var(--color-sound)',
     },
     '.cm-pattern-string, .cm-pattern-string *': {

@@ -4,16 +4,18 @@ import { javascript, javascriptLanguage } from '@codemirror/lang-javascript'
 import { bracketMatching } from '@codemirror/language'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
 import { crosshairCursor, Decoration, drawSelection, dropCursor, EditorView, highlightSpecialChars, keymap, lineNumbers, rectangularSelection, ViewPlugin, WidgetType, type DecorationSet } from '@codemirror/view'
-import { previewNames, type EvaluationResult } from '@lovechild/strudel'
+import type { EvaluationResult } from '@lovechild/strudel'
+import { getWidgetID, previewNames } from '@lovechild/strudel/editor'
 import { flash, flashField } from '@strudel/codemirror/flash.mjs'
 import { highlightExtension, highlightMiniLocations, updateMiniLocations } from '@strudel/codemirror/highlight.mjs'
 import { sliderPlugin, updateSliderWidgets } from '@strudel/codemirror/slider.mjs'
 import { BlockWidget, setWidget } from '@strudel/codemirror/widget.mjs'
 import type { Hap } from '@strudel/core'
 import type { Widget } from '@strudel/transpiler'
-import { trackMarkers } from './tracks'
+import { blockMarkers } from './blocks'
 import { bracketColors } from './brackets'
 import { formatView } from './format'
+import { createPatternPreviews, PatternPreviewWidget } from './pattern-previews.svelte'
 import { createKeyHandler } from './keys'
 import { errorLines, warningLines, type LineMessage } from './lines'
 import { theme } from './theme'
@@ -60,12 +62,17 @@ class InlineWidget extends WidgetType {
     }
 }
 
-const setWidgets = StateEffect.define<ReadonlyArray<Widget>>()
+interface PlacedWidget {
+    to: number
+    widget: WidgetType
+}
 
-const createDecorations = (state: EditorState, widgets: ReadonlyArray<Widget>) => {
-    const decorations = widgets.filter((widget) => previewNames.includes(widget.type)).map((widget) => {
-        const line = state.doc.lineAt(Math.min(widget.to, state.doc.length))
-        return Decoration.widget({ widget: new InlineWidget(widget), side: 1, block: true }).range(line.to)
+const setWidgets = StateEffect.define<ReadonlyArray<PlacedWidget>>()
+
+const createDecorations = (state: EditorState, placed: ReadonlyArray<PlacedWidget>) => {
+    const decorations = placed.map(({ to, widget }) => {
+        const line = state.doc.lineAt(Math.min(to, state.doc.length))
+        return Decoration.widget({ widget, side: 1, block: true }).range(line.to)
     })
 
     return Decoration.set(decorations, true)
@@ -101,6 +108,14 @@ export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => 
         onEvaluate(view.state.doc.toString())
     }
 
+    const patternPreviews = createPatternPreviews()
+
+    const placeWidget = (widget: Widget): PlacedWidget => {
+        const id = getWidgetID(widget)
+        const isPattern = patternPreviews.source.patterns.has(id)
+        return { to: widget.to, widget: isPattern ? new PatternPreviewWidget(id, patternPreviews.source) : new InlineWidget(widget) }
+    }
+
     const view = new EditorView({
         parent,
         state: EditorState.create({
@@ -127,7 +142,7 @@ export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => 
                 widgetField,
                 remeasureOnResize,
                 sliderPlugin,
-                trackMarkers,
+                blockMarkers,
                 createToggles(evaluate),
                 bracketColors,
                 tokenColors,
@@ -142,16 +157,20 @@ export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => 
     return {
         evaluate: () => evaluate(view),
         setCode: (code) => view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } }),
-        showEvaluation: ({ miniLocations, widgets, previews }) => {
-            for (const { id, element } of previews) {
+        showEvaluation: ({ miniLocations, widgets, imagePreviews, patternPreviews: shownPatterns }) => {
+            for (const { id, element } of imagePreviews) {
                 setWidget(id, element)
             }
 
+            patternPreviews.show(shownPatterns)
             updateMiniLocations(view, miniLocations)
-            view.dispatch({ effects: setWidgets.of(widgets) })
+            view.dispatch({ effects: setWidgets.of(widgets.filter((widget) => previewNames.includes(widget.type)).map(placeWidget)) })
             updateSliderWidgets(view, widgets)
         },
-        highlight: (time, haps) => highlightMiniLocations(view, time, haps),
+        highlight: (time, haps) => {
+            highlightMiniLocations(view, time, haps)
+            patternPreviews.setTime(time)
+        },
         showWarnings: (messages) => view.dispatch({ effects: warningLines.setMessages.of(messages) }),
         showErrors: (messages) => view.dispatch({ effects: errorLines.setMessages.of(messages) }),
         destroy: () => view.destroy(),

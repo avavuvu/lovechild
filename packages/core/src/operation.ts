@@ -54,7 +54,7 @@ export type Operation =
     | { kind: 'select', options: ReadonlyArray<Operation>, parameters: ReadonlyArray<Argument> }
     | { kind: 'media', name: MediaName, source: string }
     | { kind: 'text', settings: TextSettings, fill: Operation, stroke: Operation }
-    | { kind: 'previous', track?: string }
+    | { kind: 'previous', imageName?: string }
     | { kind: 'feedback', input: Operation }
     | { kind: 'capture', input: Operation, gate: Operation }
 

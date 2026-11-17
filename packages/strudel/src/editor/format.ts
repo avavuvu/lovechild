@@ -1,5 +1,6 @@
-import { parse, tokTypes, type AnyNode, type Comment, type Program, type Token } from 'acorn'
-import { separateStatements } from './statements'
+import { tokTypes, type AnyNode, type Comment } from 'acorn'
+import { separateStatements } from '../evaluation/prepare'
+import { parseCode, type Parsed as Syntax } from '../evaluation/syntax'
 
 interface Item {
     start: number
@@ -17,10 +18,7 @@ interface Link {
     end: number
 }
 
-interface Parsed {
-    program: Program
-    tokens: ReadonlyArray<Token>
-    comments: ReadonlyArray<Comment>
+interface Parsed extends Syntax {
     source: string
 }
 
@@ -40,17 +38,12 @@ const countLineBreaks = (text: string) => text.split('\n').length - 1
 
 const isNumber = (node: AnyNode | null) => node?.type === 'Literal' && typeof node.value === 'number'
 
+const hasSeveralCalls = (items: ReadonlyArray<AnyNode | null>) => items.filter((item) => item?.type === 'CallExpression').length >= 2
+
 const readCode = (code: string): Parsed | undefined => {
     const source = separateStatements(code)
-    const tokens: Array<Token> = []
-    const comments: Array<Comment> = []
-
-    try {
-        const program = parse(source, { ecmaVersion: 2022, allowAwaitOutsideFunction: true, preserveParens: true, onToken: tokens, onComment: comments })
-        return { program, tokens, comments, source }
-    } catch {
-        return undefined
-    }
+    const parsed = parseCode(source, { preserveParens: true })
+    return parsed && { ...parsed, source }
 }
 
 const describeCode = ({ program, tokens, comments, source }: Parsed) => JSON.stringify([
@@ -158,7 +151,7 @@ const layOut = (code: string, { program, tokens, comments, source }: Parsed) => 
         }
 
         if (node.type === 'CallExpression' && !node.optional && node.callee.type === 'Identifier') {
-            return node.callee.name + formatList('(', node.arguments, ')', depth, node.callee.end, node.end)
+            return node.callee.name + formatList('(', node.arguments, ')', depth, node.callee.end, node.end, hasSeveralCalls(node.arguments))
         }
 
         return readSource(node.start, node.end)
@@ -171,7 +164,7 @@ const layOut = (code: string, { program, tokens, comments, source }: Parsed) => 
         const linkComments = links.map((link) => findComments(link.objectEnd, link.propertyStart))
         const hasComments = linkComments.some((found) => found.length > 0)
 
-        const formatLink = (link: Link, linkDepth: number) => '.' + link.name + (link.values === undefined ? '' : formatList('(', link.values, ')', linkDepth, link.valuesStart, link.end))
+        const formatLink = (link: Link, linkDepth: number) => '.' + link.name + (link.values === undefined ? '' : formatList('(', link.values, ')', linkDepth, link.valuesStart, link.end, hasSeveralCalls(link.values)))
 
         const inline = baseText + links.map((link) => formatLink(link, depth)).join('')
         const shouldBreak = hasComments || (!isCallback && calls >= 2)

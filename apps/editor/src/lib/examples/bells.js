@@ -21,7 +21,7 @@ $: stack(
   .dt(rand.range(.001,.1).fast(12))
   .dfb(".5")
 
-const square = shape("<4 8>*2").scale(0.3)
+let square = shape("<4 8>*2").scale(0.3)
 
 $: white().layer(
     noise($hh.hits().add(2), 10)

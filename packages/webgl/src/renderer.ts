@@ -1,5 +1,5 @@
 import type { BufferInput, Graph, Target } from '@lovechild/core'
-import { createFeedbackBuffer, deleteFeedbackBuffer, resizeFeedbackBuffer, type FeedbackBuffer } from './buffer'
+import { createFeedbackBuffer, deleteFeedbackBuffer, resizeFeedbackBuffer, updateMipmaps, type FeedbackBuffer } from './buffer'
 import { createEmptyTexture, createMediaTexture, deleteMediaTexture, getCurrentTexture, updateMediaTexture, type MediaElement, type MediaTexture } from './media'
 import { createProgram, createVertexShader } from './program'
 
@@ -66,6 +66,17 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
         const program = createProgram(gl, vertexShader, source)
         programs.set(source, program)
         return program
+    }
+
+    const deleteUnusedPrograms = (graph: CompiledGraph) => {
+        const used = new Set(graph.passes.map((pass) => pass.program))
+
+        for (const [source, program] of programs) {
+            if (!used.has(program)) {
+                gl.deleteProgram(program)
+                programs.delete(source)
+            }
+        }
     }
 
     let size = { width: canvas.width, height: canvas.height }
@@ -183,7 +194,13 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
         draw: (graph, values, time, cps, previews, media) => {
             resizeCanvas()
             addBuffers(graph.bufferCount)
-            const isFirstFrame = graph !== drawnGraph || wasResized
+            const isNewGraph = graph !== drawnGraph
+            const isFirstFrame = isNewGraph || wasResized
+
+            if (isNewGraph) {
+                deleteUnusedPrograms(graph)
+            }
+
             const lastTime = isFirstFrame ? time : previousTime
             const readyMedia = media.map(updateMedia)
 
@@ -234,6 +251,11 @@ export const createRenderer = (canvas: HTMLCanvasElement): Renderer => {
                 }
 
                 gl.drawArrays(gl.TRIANGLES, 0, 3)
+
+                if (target.kind === 'buffer') {
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+                    updateMipmaps(gl, buffers[target.index], writeIndex)
+                }
             }
 
             writeIndex = 1 - writeIndex

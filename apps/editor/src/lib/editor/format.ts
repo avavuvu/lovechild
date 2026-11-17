@@ -1,7 +1,7 @@
 import { isolateHistory } from '@codemirror/commands'
 import { Transaction } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
-import { formatCode } from '@lovechild/strudel'
+import { formatCode } from '@lovechild/strudel/editor'
 
 interface Change {
     from: number

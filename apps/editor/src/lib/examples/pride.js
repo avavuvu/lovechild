@@ -1,4 +1,4 @@
-const bg = (seed) => solid(1, 0.2, 0.9).diff(
+let bg = (seed) => solid(1, 0.2, 0.9).diff(
   simplex(
     1,
     1,
@@ -10,6 +10,6 @@ const bg = (seed) => solid(1, 0.2, 0.9).diff(
     .sub(solid(0, 0, 1))
 ).luma(0.01)
 
-const t = text("♥ ⚧").fill(bg(0.2))
+let t = text("♥ ⚧").fill(bg(0.2))
 
 $: bg(10).layer(t)

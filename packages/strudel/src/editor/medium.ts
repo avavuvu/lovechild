@@ -1,12 +1,13 @@
 import { isTextStyle } from '@lovechild/core'
 import * as strudel from '@strudel/core'
-import { isImageFunction } from './images'
+import { isImageFunction } from '../language/images'
+import { patternFunctions } from '../language/patterns'
 
-export type Kind = 'image' | 'text' | 'sound' | 'neutral'
+export type Medium = 'image' | 'text' | 'sound' | 'neutral'
 
 const textFunction = 'text'
 
-export const readFunctionKind = (name: string): Kind | undefined => {
+export const readFunctionMedium = (name: string): Medium | undefined => {
     if (name === textFunction) {
         return 'text'
     }
@@ -19,10 +20,10 @@ export const readFunctionKind = (name: string): Kind | undefined => {
         return 'sound'
     }
 
-    return name in strudel ? 'neutral' : undefined
+    return name in strudel || name in patternFunctions ? 'neutral' : undefined
 }
 
-export const readMethodKind = (receiver: Kind | undefined, name: string): Kind | undefined => {
+export const readMethodMedium = (receiver: Medium | undefined, name: string): Medium | undefined => {
     switch (receiver) {
         case 'text': {
             return isTextStyle(name) ? 'text' : 'image'

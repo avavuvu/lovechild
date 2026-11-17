@@ -4,7 +4,7 @@
 // http://khoparzi.com
 // ported from the Hydra original at https://hydra.ojack.xyz
 
-const triangle = shape(3)
+let triangle = shape(3)
   .scale(0.3)
   .scale(cosine.slow(12.57).range(-2, 2))
   .rotate(isaw.slow(12.57))

@@ -1,20 +1,12 @@
-import { isImage, type Image, type Uniform } from '@lovechild/core'
+import { paintCallNames, type Uniform } from '@lovechild/core'
 import { isPattern, pure, type Hap, type Pattern } from '@strudel/core'
 import { readColor } from './colors'
-import type { Track } from './names'
-import type { Location, WarningList } from './warnings'
+import type { Location, WarningList } from '../evaluation/warnings'
 
 export interface ValueReader {
     values: ReadonlyArray<number>
     updateValues: (time: number) => Array<Hap>
 }
-
-export const layerImages = (tracks: ReadonlyArray<Track>) => {
-    const images = tracks.filter(isImage)
-    return images.length > 0 ? images.reduce((layered, next) => layered.layer(next)) : undefined
-}
-
-export const getNamedImages = (names: ReadonlyMap<string, Track>) => new Map(Array.from(names).filter((entry): entry is [string, Image] => isImage(entry[1])))
 
 const fallbackColor: ReadonlyArray<number> = [0, 0, 0, 1]
 
@@ -28,7 +20,7 @@ export const createValueReader = (uniforms: ReadonlyArray<Uniform>, warnings: Wa
         const color = readColor(value)
 
         if (!color) {
-            warnings.add({ kind: 'invalidColor', value }, { locations, search: typeof value === 'string' ? { text: value } : undefined })
+            warnings.add({ kind: 'invalidColor', value }, { locations, search: typeof value === 'string' ? { text: value, calls: paintCallNames } : undefined })
         }
 
         return (color ?? fallbackColor)[channel] ?? 0

@@ -1,17 +1,31 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-	import type { PageProps } from './$types';
-    import { getExamplePlayer } from '$lib/player';
-    import Backdrop from '$lib/Backdrop.svelte';
+    import { untrack } from 'svelte'
+    import { page } from '$app/state'
+    import Backdrop from '$lib/Backdrop.svelte'
+    import Examples from '$lib/examples/Examples.svelte'
+    import { getExamplePlayer } from '$lib/player'
+    import type { PageProps } from './$types'
 
-	let { data }: PageProps = $props();
+    let { data }: PageProps = $props()
 
-	const player = getExamplePlayer()
-    const id = Symbol(data.example.name)
+    const player = getExamplePlayer()
 
-	onMount(() => {
-	    player.play({ id, code: data.example, onFrame: () => {} })
-	})
+    $effect(() => {
+        const { name, code } = data
+        untrack(() => player.play({ id: Symbol(name), code, isAutomatic: !page.state.isChosen, onFrame: () => {} }))
+    })
 </script>
 
 <Backdrop />
+<div>
+    <Examples current={data.name} />
+</div>
+
+<style>
+    div {
+        position: fixed;
+        bottom: var(--gap);
+        left: 50%;
+        transform: translateX(-50%);
+    }
+</style>

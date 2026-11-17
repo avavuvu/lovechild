@@ -38,7 +38,7 @@ export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
 
 export const hasFreePrevious = (operation: Operation): boolean => {
     if (operation.kind === 'previous') {
-        return operation.track === undefined
+        return operation.imageName === undefined
     }
 
     if (operation.kind === 'feedback') {
@@ -54,7 +54,7 @@ export const closeLoop = (image: Image) => {
 
 const usesPrevious = (operation: Operation): boolean => operation.kind === 'previous' || getChildren(operation).some(usesPrevious)
 
-const canShowImage = (operation: Operation, tracks: ReadonlyMap<string, Image>, visiting: ReadonlySet<string>): boolean => {
+const canShowImage = (operation: Operation, imagesByName: ReadonlyMap<string, Image>, visiting: ReadonlySet<string>): boolean => {
     switch (operation.kind) {
         case 'source': {
             return operation.name !== 'empty'
@@ -65,99 +65,25 @@ const canShowImage = (operation: Operation, tracks: ReadonlyMap<string, Image>, 
             return true
         }
         case 'previous': {
-            const track = operation.track === undefined || visiting.has(operation.track) ? undefined : tracks.get(operation.track)
-            return track !== undefined && canShowImage(track.operation, tracks, new Set([...visiting, operation.track ?? '']))
+            const named = operation.imageName === undefined || visiting.has(operation.imageName) ? undefined : imagesByName.get(operation.imageName)
+            return named !== undefined && canShowImage(named.operation, imagesByName, new Set([...visiting, operation.imageName ?? '']))
         }
         case 'combine': {
-            return canShowImage(operation.input, tracks, visiting) || canShowImage(operation.other, tracks, visiting)
+            return canShowImage(operation.input, imagesByName, visiting) || canShowImage(operation.other, imagesByName, visiting)
         }
         case 'select': {
-            return operation.options.some((option) => canShowImage(option, tracks, visiting))
+            return operation.options.some((option) => canShowImage(option, imagesByName, visiting))
         }
         case 'coordinate':
         case 'split':
         case 'swizzle':
         case 'feedback':
         case 'capture': {
-            return canShowImage(operation.input, tracks, visiting)
+            return canShowImage(operation.input, imagesByName, visiting)
         }
     }
 }
 
-export const isEmptyLoop = (image: Image, tracks: ReadonlyMap<string, Image>, name?: string) => {
-    return usesPrevious(image.operation) && !canShowImage(image.operation, tracks, new Set(name === undefined ? [] : [name]))
-}
-
-const transparentColors: ReadonlySet<string> = new Set(['luma', 'opacity', 'channels'])
-
-const transparentSources: ReadonlySet<string> = new Set(['empty', 'paint'])
-
-const eitherOpaqueCombines: ReadonlySet<string> = new Set(['add', 'max', 'diff', 'layer', 'screen'])
-
-const bothOpaqueCombines: ReadonlySet<string> = new Set(['mult', 'min', 'blend'])
-
-const isOpaqueAlpha = (argument: Argument | undefined): boolean => {
-    if (argument === undefined || argument === 1) {
-        return true
-    }
-
-    return isImage(argument) && isOpaque(argument.operation)
-}
-
-const isOpaqueSource = (operation: Extract<Operation, { kind: 'source' }>): boolean => {
-    if (transparentSources.has(operation.name)) {
-        return false
-    }
-
-    if (operation.name === 'solid') {
-        const [color] = operation.parameters
-        return Array.isArray(color) ? color[3] === 1 : typeof color === 'number' || isOpaqueAlpha(color)
-    }
-
-    if (operation.name === 'hsv' || operation.name === 'oklch') {
-        return operation.parameters[3] === undefined || operation.parameters[3] === 1
-    }
-
-    return true
-}
-
-export const isOpaque = (operation: Operation): boolean => {
-    switch (operation.kind) {
-        case 'source': {
-            return isOpaqueSource(operation)
-        }
-        case 'media':
-        case 'text': {
-            return false
-        }
-        case 'previous': {
-            return true
-        }
-        case 'coordinate':
-        case 'split':
-        case 'feedback':
-        case 'capture': {
-            return isOpaque(operation.input)
-        }
-        case 'swizzle': {
-            return operation.channels.length < 4 || ('aw'.includes(operation.channels[3]) && isOpaque(operation.input))
-        }
-        case 'color': {
-            return !transparentColors.has(operation.name) && isOpaque(operation.input)
-        }
-        case 'combine': {
-            if (eitherOpaqueCombines.has(operation.name)) {
-                return isOpaque(operation.input) || isOpaque(operation.other)
-            }
-
-            if (bothOpaqueCombines.has(operation.name)) {
-                return isOpaque(operation.input) && isOpaque(operation.other)
-            }
-
-            return operation.name !== 'mask' && operation.name !== 'key' && isOpaque(operation.input)
-        }
-        case 'select': {
-            return operation.options.every(isOpaque)
-        }
-    }
+export const isEmptyLoop = (image: Image, imagesByName: ReadonlyMap<string, Image>, name?: string) => {
+    return usesPrevious(image.operation) && !canShowImage(image.operation, imagesByName, new Set(name === undefined ? [] : [name]))
 }

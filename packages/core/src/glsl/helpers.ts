@@ -12,7 +12,7 @@ vec4 sampleTexture(sampler2D image, vec2 size, vec2 coordinate) {
     sampleFeedback: `
 vec4 sampleFeedback(sampler2D image, vec2 size, vec2 coordinate) {
     vec2 position = (coordinate - 0.5) * min(size.x, size.y) / size + 0.5;
-    return texture(image, fract(position));
+    return textureGrad(image, fract(position), dFdx(position), dFdy(position));
 }`,
     sampleText: `
 vec4 sampleText(sampler2D image, vec2 size, vec2 coordinate, float section) {

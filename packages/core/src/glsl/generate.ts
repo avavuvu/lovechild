@@ -25,7 +25,7 @@ const findScope = (operation: Operation, target: Operation, scope: Feedback | un
     return undefined
 }
 
-const findReadTracks = (roots: ReadonlyArray<Operation>, tracks: ReadonlyMap<string, Image>) => {
+const findReadNames = (roots: ReadonlyArray<Operation>, imagesByName: ReadonlyMap<string, Image>) => {
     const names = new Set<string>()
     const seen = new Set<Operation>()
 
@@ -36,12 +36,12 @@ const findReadTracks = (roots: ReadonlyArray<Operation>, tracks: ReadonlyMap<str
 
         seen.add(operation)
 
-        if (operation.kind === 'previous' && operation.track !== undefined && !names.has(operation.track)) {
-            names.add(operation.track)
-            const track = tracks.get(operation.track)
+        if (operation.kind === 'previous' && operation.imageName !== undefined && !names.has(operation.imageName)) {
+            names.add(operation.imageName)
+            const named = imagesByName.get(operation.imageName)
 
-            if (track) {
-                visit(track.operation)
+            if (named) {
+                visit(named.operation)
             }
         }
 
@@ -52,20 +52,20 @@ const findReadTracks = (roots: ReadonlyArray<Operation>, tracks: ReadonlyMap<str
     return names
 }
 
-export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray<Image>, tracks: ReadonlyMap<string, Image>): Graph => {
+export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray<Image>, imagesByName: ReadonlyMap<string, Image>): Graph => {
     const uniforms: Array<Uniform> = []
     const uniformNames = new Map<Operation, ReadonlyArray<Declared>>()
     const buffers = new Map<Feedback | Capture, number>()
-    const trackLoops = new Map<string, Feedback>()
+    const namedLoops = new Map<string, Feedback>()
     const media: Array<MediaInput> = []
     const mediaIndexes = new Map<string, number>()
     const textKeys = new Map<Text, string>()
     const passes: Array<Pass> = []
     const roots = [screen, ...previews].filter((image) => image !== undefined).map((image) => image.operation)
 
-    const loopInputs = new Map(Array.from(findReadTracks(roots, tracks)).flatMap((name): Array<[Operation, string]> => {
-        const track = tracks.get(name)
-        return track && track.operation.kind !== 'feedback' ? [[track.operation, name]] : []
+    const loopInputs = new Map(Array.from(findReadNames(roots, imagesByName)).flatMap((name): Array<[Operation, string]> => {
+        const named = imagesByName.get(name)
+        return named && named.operation.kind !== 'feedback' ? [[named.operation, name]] : []
     }))
 
     const getTextKey = (operation: Text) => {
@@ -153,26 +153,26 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
             addPass(capture, scope, { kind: 'buffer', index })
             return index
         },
-        getTrackLoop: (name) => {
-            const existing = trackLoops.get(name)
+        getNamedLoop: (name) => {
+            const existing = namedLoops.get(name)
 
             if (existing) {
                 return existing
             }
 
-            const track = tracks.get(name)
+            const named = imagesByName.get(name)
 
-            if (track === undefined) {
+            if (named === undefined) {
                 throw new Error(`${name} is not defined`)
             }
 
-            const loop: Feedback = track.operation.kind === 'feedback' ? track.operation : { kind: 'feedback', input: track.operation }
-            trackLoops.set(name, loop)
+            const loop: Feedback = named.operation.kind === 'feedback' ? named.operation : { kind: 'feedback', input: named.operation }
+            namedLoops.set(name, loop)
             return loop
         },
-        findTrackLoop: (operation) => {
+        findNamedLoop: (operation) => {
             const name = loopInputs.get(operation)
-            return name === undefined ? undefined : resources.getTrackLoop(name)
+            return name === undefined ? undefined : resources.getNamedLoop(name)
         },
     }
 

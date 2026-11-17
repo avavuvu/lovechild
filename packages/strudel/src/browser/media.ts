@@ -1,5 +1,7 @@
 import type { MediaInput } from '@lovechild/core'
-import type { MediaElement } from '@lovechild/webgl'
+import type { MediaElement, Renderer } from '@lovechild/webgl'
+import { getOrCreate } from '../maps'
+import type { ErrorReporter } from './errors'
 
 const createVideoElement = () => {
     const element = document.createElement('video')
@@ -15,13 +17,13 @@ const startCamera = async (element: HTMLVideoElement) => {
     await element.play()
 }
 
-export const createMediaElement = (input: MediaInput): MediaElement => {
+const createMediaElement = (input: MediaInput, errors: ErrorReporter): MediaElement => {
     switch (input.name) {
         case 'text': {
             return document.createElement('canvas')
         }
         case 'picture': {
-            const element = new Image()
+            const element = document.createElement('img')
             element.crossOrigin = 'anonymous'
             element.src = input.source
             return element
@@ -29,18 +31,18 @@ export const createMediaElement = (input: MediaInput): MediaElement => {
         case 'video': {
             const element = createVideoElement()
             element.src = input.source
-            element.play().catch((error: unknown) => console.error(error))
+            element.play().catch((error: unknown) => errors.report(error))
             return element
         }
         case 'camera': {
             const element = createVideoElement()
-            startCamera(element).catch((error: unknown) => console.error(error))
+            startCamera(element).catch((error: unknown) => errors.report(error))
             return element
         }
     }
 }
 
-export const releaseMediaElement = (element: MediaElement) => {
+const releaseMediaElement = (element: MediaElement) => {
     if (element instanceof HTMLImageElement) {
         element.removeAttribute('src')
         return
@@ -62,4 +64,24 @@ export const releaseMediaElement = (element: MediaElement) => {
     element.srcObject = null
     element.removeAttribute('src')
     element.load()
+}
+
+export const createMediaCache = (renderer: Renderer, errors: ErrorReporter) => {
+    const elements = new Map<string, MediaElement>()
+
+    const get = (input: MediaInput) => getOrCreate(elements, input.key, () => createMediaElement(input, errors))
+
+    const releaseUnused = (used: ReadonlyArray<MediaInput>) => {
+        const usedKeys = new Set(used.map((input) => input.key))
+
+        for (const [key, element] of elements) {
+            if (!usedKeys.has(key)) {
+                releaseMediaElement(element)
+                renderer.release(element)
+                elements.delete(key)
+            }
+        }
+    }
+
+    return { get, releaseUnused }
 }

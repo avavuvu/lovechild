@@ -1,4 +1,4 @@
-import { findLocations, readSketch, type Search, type Sketch } from './locations'
+import { findLocations, type Search, type Sketch } from './locations'
 
 export interface Location {
     start: number
@@ -9,7 +9,6 @@ type Details =
     | { kind: 'extraArguments', name: string, expected: number, given: number }
     | { kind: 'invalidColor', value: unknown }
     | { kind: 'ambiguousPrevious', name: string }
-    | { kind: 'coveredBlock', name: string, coveredBy: string }
 
 export type Warning = Details & { locations: ReadonlyArray<Location> }
 
@@ -35,9 +34,8 @@ export const reportWarning = (found: Report) => {
     report?.(found)
 }
 
-export const createWarningList = (code: string, onWarning: (warning: Warning) => void = () => {}): WarningList => {
+export const createWarningList = (sketch: Sketch, onWarning: (warning: Warning) => void = () => {}): WarningList => {
     const seen = new Set<string>()
-    let sketch: Sketch | undefined
 
     const locate = ({ locations, search }: Place) => {
         if (locations && locations.length > 0) {
@@ -48,7 +46,6 @@ export const createWarningList = (code: string, onWarning: (warning: Warning) =>
             return []
         }
 
-        sketch ??= readSketch(code)
         return findLocations(sketch, search)
     }
 

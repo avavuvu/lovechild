@@ -1,14 +1,15 @@
-import { exampleNames, examples } from "$lib/examples/examples"
-import type { PageLoad } from "./$types"
+import { error } from '@sveltejs/kit'
+import { exampleNames, examples } from '$lib/examples/examples'
+import type { PageLoad } from './$types'
 
 export const entries = () => exampleNames.map((example) => ({ example }))
 
 export const load: PageLoad = ({ params }) => {
-    const name = exampleNames.find(name => name === params.example)
-    const example = examples.get(name ?? "")
+    const code = examples.get(params.example)
 
-    return {
-        example
+    if (code === undefined) {
+        error(404)
     }
 
+    return { name: params.example, code }
 }

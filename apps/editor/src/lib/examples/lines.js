@@ -16,7 +16,7 @@ $hh: s("hh*8")
   .dec(0.02)
   .dist(4)
 
-const bars = shape(4)
+let bars = shape(4)
   .scale(0.2)
   .scaleX(
       $sd.hits(0.03).range(1, 19))

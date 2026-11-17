@@ -1,11 +1,11 @@
 import { syntaxTree } from '@codemirror/language'
 import { RangeSet, type EditorState, type Range } from '@codemirror/state'
 import { Decoration, EditorView, GutterMarker, lineNumberMarkers, lineNumbers, WidgetType, type BlockInfo, type DecorationSet } from '@codemirror/view'
-import { getTrackName } from '@lovechild/strudel'
+import { getBlockName } from '@lovechild/strudel/editor'
 import type { SyntaxNode } from '@lezer/common'
 import { createSyntaxField } from './syntax'
 
-interface Toggles { booleans: DecorationSet, tracks: RangeSet<GutterMarker>, mutedLines: DecorationSet }
+interface Toggles { booleans: DecorationSet, blocks: RangeSet<GutterMarker>, mutedLines: DecorationSet }
 
 const createCheckbox = (className: string, isChecked: boolean, title: string) => {
     const input = document.createElement('input')
@@ -37,27 +37,27 @@ class BooleanWidget extends WidgetType {
     }
 }
 
-class TrackMarker extends GutterMarker {
+class BlockMarker extends GutterMarker {
     readonly isChecked: boolean
 
     constructor(isChecked: boolean) {
         super()
         this.isChecked = isChecked
-        this.elementClass = 'cm-track-cell'
+        this.elementClass = 'cm-block-cell'
     }
 
-    eq(other: TrackMarker) {
+    eq(other: BlockMarker) {
         return other.isChecked === this.isChecked
     }
 
     toDOM() {
-        return createCheckbox('cm-track-toggle', this.isChecked, 'Play or mute this track')
+        return createCheckbox('cm-block-toggle', this.isChecked, 'Play or mute this track')
     }
 }
 
-const isMutedLabel = (label: string) => label !== getTrackName(label)
+const isMutedLabel = (label: string) => label !== getBlockName(label)
 
-const mutedLine = Decoration.line({ class: 'cm-muted-track' })
+const mutedLine = Decoration.line({ class: 'cm-muted-block' })
 
 const getSiblings = (node: SyntaxNode | null): Array<SyntaxNode> => node === null ? [] : [node, ...getSiblings(node.nextSibling)]
 
@@ -77,14 +77,14 @@ const findToggles = (state: EditorState): Toggles => {
         }
     }
 
-    const tracks = findLabels(state).map((label) => {
+    const blocks = findLabels(state).map((label) => {
         const isPlaying = !isMutedLabel(state.sliceDoc(label.from, label.to))
 
         if (!isPlaying && label.parent) {
             markMuted(label.parent)
         }
 
-        return new TrackMarker(isPlaying).range(state.doc.lineAt(label.from).from)
+        return new BlockMarker(isPlaying).range(state.doc.lineAt(label.from).from)
     })
 
     syntaxTree(state).iterate({
@@ -96,7 +96,7 @@ const findToggles = (state: EditorState): Toggles => {
         },
     })
 
-    return { booleans: Decoration.set(booleans, true), tracks: RangeSet.of(tracks, true), mutedLines: Decoration.set(mutedLines, true) }
+    return { booleans: Decoration.set(booleans, true), blocks: RangeSet.of(blocks, true), mutedLines: Decoration.set(mutedLines, true) }
 }
 
 const toggleField = createSyntaxField(findToggles)
@@ -112,7 +112,7 @@ const flipBoolean = (state: EditorState, position: number) => {
     return { from: literal.from, to: literal.to, insert: isTrue ? 'false' : 'true' }
 }
 
-const flipTrack = (state: EditorState, line: BlockInfo) => {
+const flipBlock = (state: EditorState, line: BlockInfo) => {
     const label = findLabels(state).find((candidate) => candidate.from >= line.from && candidate.from <= line.to)
 
     if (!label) {
@@ -120,7 +120,7 @@ const flipTrack = (state: EditorState, line: BlockInfo) => {
     }
 
     const text = state.sliceDoc(label.from, label.to)
-    return { from: label.from, to: label.to, insert: isMutedLabel(text) ? getTrackName(text) : '_' + text }
+    return { from: label.from, to: label.to, insert: isMutedLabel(text) ? getBlockName(text) : '_' + text }
 }
 
 const isToggle = (target: EventTarget | null, className: string): target is HTMLInputElement => target instanceof HTMLInputElement && target.classList.contains(className)
@@ -141,10 +141,10 @@ export const createToggles = (onToggle: (view: EditorView) => void) => {
         toggleField,
         EditorView.decorations.from(toggleField, (toggles) => toggles.booleans),
         EditorView.decorations.from(toggleField, (toggles) => toggles.mutedLines),
-        lineNumberMarkers.from(toggleField, (toggles) => toggles.tracks),
+        lineNumberMarkers.from(toggleField, (toggles) => toggles.blocks),
         lineNumbers({
             domEventHandlers: {
-                mousedown: (view, line, event) => isToggle(event.target, 'cm-track-toggle') && applyChange(view, event, flipTrack(view.state, line)),
+                mousedown: (view, line, event) => isToggle(event.target, 'cm-block-toggle') && applyChange(view, event, flipBlock(view.state, line)),
             },
         }),
         EditorView.domEventHandlers({

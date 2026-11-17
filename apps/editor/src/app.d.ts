@@ -5,6 +5,10 @@ declare global {
         interface PageData {
             links?: Links
         }
+
+        interface PageState {
+            isChosen?: boolean
+        }
     }
 }
 

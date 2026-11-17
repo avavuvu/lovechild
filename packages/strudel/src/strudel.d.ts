@@ -79,7 +79,7 @@ declare module '@strudel/core' {
     export const silence: Pattern
     export const pure: <Value>(value: Value) => Pattern<Value>
     export const signal: (getValue: (time: Fraction) => number) => Pattern<number>
-    export const register: (name: string, transform: ((pattern: Pattern<number>) => Pattern<number>) | ((argument: never, pattern: Pattern) => Pattern)) => void
+    export const register: (name: string, transform: ((pattern: Pattern<number>) => Pattern<number>) | ((argument: never, pattern: Pattern) => Pattern)) => (...values: ReadonlyArray<unknown>) => Pattern
 }
 
 declare module '@strudel/mini' {
@@ -145,5 +145,6 @@ declare module '@strudel/transpiler' {
     }
 
     export const registerWidgetType: (type: string) => void
+    export const getWidgetID: (widget: Widget) => string
     export const transpiler: (input: string, options: { wrapAsync: true }) => { output: string, miniLocations?: Array<[number, number]>, widgets?: Array<Widget> }
 }

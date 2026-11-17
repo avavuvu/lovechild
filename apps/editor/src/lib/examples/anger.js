@@ -29,7 +29,7 @@ $sd: s("<- cp>*4")
   .bank("tr808")
 
 
-const wave = osc($bass.hits(0.2).pow(9).range(2, 4))
+let wave = osc($bass.hits(0.2).pow(9).range(2, 4))
   .scale($sd.hits(0.2).range(1,0.4))
 
 $: wave.sub(previous().moveX(wave))

@@ -16,8 +16,8 @@ export interface Resources {
     getMedia: (operation: Media | Text) => number
     getBuffer: (feedback: Feedback) => number
     getCaptureBuffer: (capture: Capture, scope: Scope) => number
-    getTrackLoop: (name: string) => Feedback
-    findTrackLoop: (operation: Operation) => Feedback | undefined
+    getNamedLoop: (name: string) => Feedback
+    findNamedLoop: (operation: Operation) => Feedback | undefined
 }
 
 const vectorTypes: Record<Shape, string> = { scalar: 'float', xy: 'vec2', rgb: 'vec3', rgba: 'vec4' }
@@ -105,8 +105,8 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
         return shader.declareVariable('vec4', `vec4(${red}.r, ${green}.g, ${blue}.b, ${green}.a)`)
     }
 
-    const emitPrevious = (track: string | undefined, coordinate: string, scope: Scope) => {
-        const loop = track === undefined ? scope : resources.getTrackLoop(track)
+    const emitPrevious = (imageName: string | undefined, coordinate: string, scope: Scope) => {
+        const loop = imageName === undefined ? scope : resources.getNamedLoop(imageName)
 
         if (loop === undefined) {
             throw new Error('previous() must be inside a track')
@@ -185,7 +185,7 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
                 return shader.declareVariable('vec4', `paintText(${glyph}, ${outline}, ${fill}, ${stroke})`)
             }
             case 'previous': {
-                return emitPrevious(operation.track, coordinate, scope)
+                return emitPrevious(operation.imageName, coordinate, scope)
             }
             case 'feedback': {
                 return emitFeedback(operation, coordinate)
@@ -204,9 +204,9 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
             return cached
         }
 
-        const loop = resources.findTrackLoop(operation)
+        const loop = resources.findNamedLoop(operation)
         const isOwnLoop = operation === root && owner === loop
-        const variable = loop !== undefined && !isOwnLoop && coordinate === baseCoordinate
+        const variable = loop !== undefined && !isOwnLoop
             ? shader.sampleBuffer(resources.getBuffer(loop), 'current', coordinate)
             : emitStep(operation, coordinate, scope)
         cache.storeVariable(operation, key, variable)

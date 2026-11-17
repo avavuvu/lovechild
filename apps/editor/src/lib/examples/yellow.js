@@ -1,4 +1,4 @@
-const feedback = previous($out).moveX(
+let feedback = previous($out).moveX(
   saw
     .range("<-1 2>", "<1 -1>")
     .slow("<4 8>/4")
@@ -6,7 +6,7 @@ const feedback = previous($out).moveX(
 
 $kick: s("[bd*2] -")
 
-const q = osc(10)
+let q = osc(10)
   .mult(shape(4).scaleX(3))
   .diff(feedback.scaleX(1.09))
   .thresh()

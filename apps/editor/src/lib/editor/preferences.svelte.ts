@@ -5,6 +5,7 @@ export const settingOptions = {
     theme: ['light', 'dark'],
     format: ['on', 'off'],
     resolution: ['full', 'half'],
+    fps: ['off', 'on'],
     display: displays,
 } as const
 
@@ -14,7 +15,7 @@ export type Settings = { [Name in SettingName]: typeof settingOptions[Name][numb
 
 export const settingNames = Object.keys(settingOptions) as Array<SettingName>
 
-export const settings: Settings = $state({ theme: 'light', format: 'on', resolution: 'full', display: 'code' })
+export const settings: Settings = $state({ theme: 'light', format: 'on', resolution: 'full', fps: 'off', display: 'code' })
 
 export const resolutionScales: Record<Settings['resolution'], number> = { full: 1, half: 0.5 }
 

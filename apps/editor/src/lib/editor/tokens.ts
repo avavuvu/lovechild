@@ -1,22 +1,22 @@
 import { syntaxTree } from '@codemirror/language'
 import type { EditorState, Range } from '@codemirror/state'
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view'
-import type { Kind } from '@lovechild/strudel'
+import type { Medium } from '@lovechild/strudel/editor'
 import type { SyntaxNode } from '@lezer/common'
-import { readKinds } from './kinds'
+import { readMediums } from './mediums'
 import { createSyntaxField } from './syntax'
 
 const patternStringMark = Decoration.mark({ class: 'cm-pattern-string' })
 
-const createKindMark = (kind: Kind, isQuiet: boolean) => Decoration.mark({ class: `cm-kind-${kind}` + (isQuiet ? ' cm-quiet' : '') })
+const createMediumMark = (medium: Medium, isQuiet: boolean) => Decoration.mark({ class: `cm-medium-${medium}` + (isQuiet ? ' cm-quiet' : '') })
 
-const kinds: ReadonlyArray<Kind> = ['image', 'text', 'sound', 'neutral']
+const mediums: ReadonlyArray<Medium> = ['image', 'text', 'sound', 'neutral']
 
-const loudMarks = new Map(kinds.map((kind) => [kind, createKindMark(kind, false)]))
+const loudMarks = new Map(mediums.map((medium) => [medium, createMediumMark(medium, false)]))
 
-const quietMarks = new Map(kinds.map((kind) => [kind, createKindMark(kind, true)]))
+const quietMarks = new Map(mediums.map((medium) => [medium, createMediumMark(medium, true)]))
 
-const getKindMark = (kind: Kind, isQuiet: boolean) => (isQuiet ? quietMarks : loudMarks).get(kind) ?? createKindMark(kind, isQuiet)
+const getMediumMark = (medium: Medium, isQuiet: boolean) => (isQuiet ? quietMarks : loudMarks).get(medium) ?? createMediumMark(medium, isQuiet)
 
 const readText = (state: EditorState, node: SyntaxNode) => state.sliceDoc(node.from, node.to)
 
@@ -28,7 +28,7 @@ const isTrackName = (state: EditorState, node: SyntaxNode) => {
 const isPatternString = (state: EditorState, node: SyntaxNode) => node.name === 'TemplateString' || (node.name === 'String' && state.sliceDoc(node.from, node.from + 1) === '"' && !isTrackName(state, node))
 
 const findTokenMarks = (state: EditorState): DecorationSet => {
-    const marks: Array<Range<Decoration>> = readKinds(state).marks.map(({ from, to, kind, isQuiet }) => getKindMark(kind, isQuiet).range(from, to))
+    const marks: Array<Range<Decoration>> = readMediums(state).marks.map(({ from, to, medium, isQuiet }) => getMediumMark(medium, isQuiet).range(from, to))
 
     syntaxTree(state).iterate({
         enter: ({ node }) => {

@@ -1,28 +1,20 @@
 <script lang="ts">
-    import { exampleNames, examples } from './examples'
-    import { getExamplePlayer } from '../player'
+    import { goto } from '$app/navigation'
+    import { exampleNames } from './examples'
 
-    const player = getExamplePlayer()
-    const id = Symbol('examples')
+    let { current }: { current: string } = $props()
 
-    let selected = $state(exampleNames.find((name) => examples.get(name) === player.code) ?? '')
-
-    const select = (name: string) => {
-        selected = name
-        player.play({ id, code: examples.get(name) ?? '', onFrame: () => {} })
-    }
+    const open = (name: string) => goto(`/examples/${name}`, { state: { isChosen: true } })
 
     const step = (offset: number) => {
-        const index = exampleNames.indexOf(selected)
-        const current = index === -1 && offset < 0 ? 0 : index
-        select(exampleNames.at((current + offset) % exampleNames.length) ?? '')
+        const index = exampleNames.indexOf(current)
+        open(exampleNames.at((index + offset) % exampleNames.length) ?? current)
     }
 </script>
 
 <nav>
     <button type="button" onclick={() => step(-1)}>←</button>
-    <select value={selected} onchange={(event) => select(event.currentTarget.value)}>
-        <option value="" disabled></option>
+    <select value={current} onchange={(event) => open(event.currentTarget.value)}>
         {#each exampleNames as name (name)}
             <option value={name}>{name}</option>
         {/each}

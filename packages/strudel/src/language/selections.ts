@@ -1,6 +1,6 @@
 import { Image, isImage, selectImage } from '@lovechild/core'
 import { isPattern, pure, reify, stack, type Pattern, type PatternTransform, type SelectionName } from '@strudel/core'
-import { fillGaps } from './events'
+import { fillGaps } from './signals'
 
 type Transform = (image: Image) => Image
 
@@ -61,28 +61,16 @@ const applySelection = (name: SelectionName, image: Image, values: ReadonlyArray
 
 const degradeImage = (image: Image, amount: DegradeAmount) => selectImage(stack(pure(1).degradeBy(amount), pure(0)), [image.hush(), image])
 
-for (const name of selectionNames) {
-    Object.defineProperty(Image.prototype, name, {
-        value: function (this: Image, ...values: ReadonlyArray<SelectionValue>) {
-            return applySelection(name, this, values)
-        },
-        configurable: true,
-        writable: true,
-    })
+const createSelectionMethod = (name: SelectionName) => function (this: Image, ...values: ReadonlyArray<SelectionValue>) {
+    return applySelection(name, this, values)
 }
 
-Object.defineProperty(Image.prototype, 'degradeBy', {
-    value: function (this: Image, amount: DegradeAmount) {
+export const selectionMethods = {
+    ...Object.fromEntries(selectionNames.map((name) => [name, createSelectionMethod(name)])),
+    degradeBy: function (this: Image, amount: DegradeAmount) {
         return degradeImage(this, amount)
     },
-    configurable: true,
-    writable: true,
-})
-
-Object.defineProperty(Image.prototype, 'degrade', {
-    value: function (this: Image) {
+    degrade: function (this: Image) {
         return degradeImage(this, 0.5)
     },
-    configurable: true,
-    writable: true,
-})
+}
