@@ -90,10 +90,14 @@ export const readLovechildDocs = (): ReadonlyArray<LovechildDoc> => {
     const findExportPath: FindPath = (name) => name in sourceFunctions ? ['sourceFunctions', name] : [name]
     const findTextPath: FindPath = (name) => name === 'text' ? [name] : ['TextImage', name]
 
+    const methods = createDocs(readMethods(Image.prototype), findCategory, (name) => ['Image', name], () => 'Image')
+    const methodNames = new Set(methods.flatMap((doc) => [doc.name, ...doc.synonyms]))
+    const withoutMethodNames = (docs: ReadonlyArray<LovechildDoc>) => docs.map((doc) => ({ ...doc, synonyms: doc.synonyms.filter((name) => !methodNames.has(name)) }))
+
     return [
-        ...createDocs(sources, () => 'source', findExportPath),
+        ...withoutMethodNames(createDocs(sources, () => 'source', findExportPath)),
         ...createDocs(media, () => 'media', findExportPath),
         ...createDocs([['text', text], ...readMethods(TextImage.prototype)], () => 'text', findTextPath, (name) => name === 'text' ? undefined : 'TextImage'),
-        ...createDocs(readMethods(Image.prototype), findCategory, (name) => ['Image', name], () => 'Image'),
+        ...methods,
     ]
 }

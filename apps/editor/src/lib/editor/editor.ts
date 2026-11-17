@@ -27,6 +27,7 @@ export interface EditorOptions {
     onEvaluate: (code: string) => void
     onStop: () => void
     shouldFormat?: () => boolean
+    isReadOnly?: boolean
 }
 
 export interface Editor {
@@ -98,7 +99,7 @@ const remeasureOnResize = ViewPlugin.define((view) => {
     return { destroy: () => observer.disconnect() }
 })
 
-export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => false }: EditorOptions): Editor => {
+export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => false, isReadOnly = false }: EditorOptions): Editor => {
     const evaluate = (view: EditorView) => {
         if (shouldFormat()) {
             formatView(view)
@@ -150,6 +151,7 @@ export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => 
                 errorLines.extension,
                 bracketMatching(),
                 theme,
+                ...(isReadOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
             ],
         }),
     })

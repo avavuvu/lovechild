@@ -4,7 +4,11 @@
     import { getExamplePlayer } from '../../player'
     import { getDocsContext } from '../context'
 
-    let { code }: { code: string } = $props()
+    let { code, language = 'lovechild' }: { code: string, language?: 'lovechild' | 'hydra' } = $props()
+
+    // svelte-ignore state_referenced_locally
+    const isHydra = language === 'hydra'
+    const hydraUrl = $derived(`https://hydra.ojack.xyz/?code=${encodeURIComponent(btoa(encodeURIComponent(code)))}`)
 
     const player = getExamplePlayer()
     const isPlayable = getDocsContext()?.isPlayable ?? true
@@ -48,7 +52,7 @@
                 return
             }
 
-            editor = createEditor({ parent: container, onEvaluate: play, onStop: player.stop })
+            editor = createEditor({ parent: container, onEvaluate: isHydra ? () => {} : play, onStop: player.stop, isReadOnly: isHydra })
             editor.setCode(code)
         })
 
@@ -65,7 +69,11 @@
         {#if !editor}
             <pre><code>{code}</code></pre>
         {/if}
-        <button type="button" onclick={toggle}>{isPlaying ? '■' : '▶'}</button>
+        {#if isHydra}
+            <a class="action" href={hydraUrl} target="_blank" rel="noreferrer">↗</a>
+        {:else}
+            <button class="action" type="button" onclick={toggle}>{isPlaying ? '■' : '▶'}</button>
+        {/if}
     </figure>
 {:else}
     <pre class="static"><code>{code}</code></pre>
@@ -96,7 +104,9 @@
         border: var(--border);
     }
 
-    button {
+    .action {
+        display: grid;
+        place-items: center;
         position: absolute;
         top: 0;
         right: 0;
@@ -104,6 +114,7 @@
         height: var(--row-height);
         background: var(--color-background);
         color: var(--color-foreground);
+        text-decoration: none;
         cursor: pointer;
     }
 </style>

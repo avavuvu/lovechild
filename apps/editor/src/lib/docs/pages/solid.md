@@ -11,9 +11,5 @@ Most commonly, this function will be called by providing three numbers from 0 to
 It can also take a HTML color name.
 
 ```lovechild
-$: osc(3).screen(color("<firebrick wheat>"))
+$: osc(3).screen(solid("<firebrick wheat>"))
 ```
-
-
-
-<Disambig page="strudel:color"/>

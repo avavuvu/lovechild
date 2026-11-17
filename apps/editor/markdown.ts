@@ -90,6 +90,10 @@ const highlighter = (code: string, language: string | null | undefined) => {
         return `<Try code={${JSON.stringify(code)}} />`
     }
 
+    if (language === 'hydra') {
+        return `<Try language="hydra" code={${JSON.stringify(code)}} />`
+    }
+
     return `<pre><code>${escapeText(code)}</code></pre>`
 }
 
