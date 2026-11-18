@@ -1,4 +1,4 @@
-import { camera, colorNames, combineNames, coordinateNames, definitions, Image, picture, previous, sourceFunctions, sourceNames, splitNames, text, TextImage, video } from '@lovechild/core'
+import { camera, colorNames, combineNames, coordinateNames, definitions, Image, picture, previous, sourceFunctions, sourceNames, text, TextImage, video } from '@lovechild/core'
 import type { EntryParameter } from '../docs/reference'
 import { readSignatureTypes } from './types'
 
@@ -22,7 +22,7 @@ const stepCategories = new Map<string, string>([
     ...coordinateNames.map((name): [string, string] => [name, 'coordinate']),
     ...colorNames.map((name): [string, string] => [name, 'color']),
     ...combineNames.map((name): [string, string] => [name, 'combine']),
-    ...splitNames.map((name): [string, string] => [name, 'split']),
+    ['split', 'split'],
 ])
 
 const swizzlePattern = /^(?:[rgba]{1,4}|[xyzw]{1,4})$/
